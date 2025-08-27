@@ -50,6 +50,8 @@ This project is designed to be scalable, maintainable, and easy to extend.
 ```
 
 go-rest-api-boilerplate/
+├── api/                  # Postman collection
+│   └── go-rest-api-boilerplate.postman\_collection.json
 ├── cmd/                 # entry point (main.go)
 ├── internal/
 │   ├── config/          # configuration (.env, env loader)
@@ -68,8 +70,6 @@ go-rest-api-boilerplate/
 │           └── router      # HTTP routing
 ├── pkg/                  # helpers/utilities
 ├── tmp/                  # runtime temp (e.g., logs)
-├── api/                  # Postman collection
-│   └── go-rest-api-boilerplate.postman\_collection.json
 ├── .air.toml             # Air live reload config
 ├── .env.example          # environment example
 ├── go.mod
