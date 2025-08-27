@@ -1,0 +1,53 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output of the go build command
+/bin/
+/build/
+/dist/
+/out/
+
+# Go workspace file
+go.work
+
+# Dependency directories (remove if you use vendoring)
+vendor/
+
+# Logs
+*.log
+/tmp
+/tmp/*
+/logs
+/logs/*
+
+# IDE/editor settings
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Air live reload
+.air.toml
+tmp/
+
+# Environment files (DO NOT commit secrets)
+.env
+.env.*.local
+.env.local
+
+# Postman generated files
+*.postman_collection.json
+*.postman_environment.json
+
+# Coverage / testing
+coverage.out
+coverage.html
+
+# OS files
+Thumbs.db
