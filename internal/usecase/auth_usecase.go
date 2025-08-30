@@ -136,7 +136,7 @@ func (u *AuthUsecaseImpl) Register(ctx context.Context, req dto.Register) (*dto.
 		existing, err := u.UserRepository.GetByEmail(ctx, tx, req.Email)
 		if err == nil && existing.ID != uuid.Nil {
 			msg := u.Tr.TContext(ctx, translations.APP_EMAIL_ALREADY_EXISTS, nil)
-			return nil, errors.NewBadRequest(msg, err.Error())
+			return nil, errors.NewBadRequest(msg)
 		}
 
 		// kalau error selain "not found" → langsung return
