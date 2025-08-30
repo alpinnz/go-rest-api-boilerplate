@@ -1,0 +1,11 @@
+{
+  "app.internal_server_error": "Internal server error",
+  "app.invalid_request_payload": "Invalid request payload",
+  "app.failed_to_parse_data": "Failed to parse role data",
+  "app.retrieved_success": "{{Data}} retrieved successfully",
+  "app.create_success": "{{Data}} created successfully",
+  "app.update_success": "{{Data}} updated successfully",
+  "app.delete_success": "{{Data}} deleted successfully",
+  "app.email_already_exists": "Email already registered",
+  "app.not_found": "Data not found"
+}

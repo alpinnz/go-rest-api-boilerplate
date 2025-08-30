@@ -1,0 +1,11 @@
+{
+  "app.internal_server_error": "Terjadi kesalahan internal server",
+  "app.invalid_request_payload": "Payload permintaan tidak valid",
+  "app.failed_to_parse_data": "Gagal memproses data role",
+  "app.retrieved_success": "{{Data}} berhasil diambil",
+  "app.create_success": "{{Data}} berhasil dibuat",
+  "app.update_success": "{{Data}} berhasil diperbarui",
+  "app.delete_success": "{{Data}} berhasil dihapus",
+  "app.email_already_exists": "Email sudah terdaftar",
+  "app.not_found": "Data tidak ditemukan"
+}

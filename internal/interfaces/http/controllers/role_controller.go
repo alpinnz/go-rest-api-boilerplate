@@ -6,7 +6,9 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/interfaces/http/dto"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/usecase"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/errors"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/helper"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/response"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/translations"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/utils"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/validation"
 
@@ -17,13 +19,15 @@ import (
 // It acts as a bridge between the HTTP layer and the role use case layer.
 type RoleController struct {
 	validator   *validation.Validator // Used for validating request payloads
-	roleUsecase usecase.RoleUsecase   // Encapsulates business logic for roles
+	tr          *translations.Store
+	roleUsecase usecase.RoleUsecase // Encapsulates business logic for roles
 }
 
 // NewRoleController initializes and returns a new RoleController instance.
-func NewRoleController(validator *validation.Validator, roleUsecase usecase.RoleUsecase) *RoleController {
+func NewRoleController(validator *validation.Validator, tr *translations.Store, roleUsecase usecase.RoleUsecase) *RoleController {
 	return &RoleController{
 		validator:   validator,
+		tr:          tr,
 		roleUsecase: roleUsecase,
 	}
 }
@@ -52,13 +56,14 @@ func (h *RoleController) GetAllRoles(c *gin.Context) {
 	// Build pagination metadata for response
 	pagination := utils.NewPagination(page, perPage, result.TotalData)
 
-	// Type assert the result data into []dto.Role
-	roles, ok := result.Data.([]dto.Role)
-	if !ok {
-		response.InternalError(c, "Failed to parse role data", nil)
+	// Type assert data
+	roles, err := helper.ConvertToSlice[dto.Role](result.Data)
+	if err != nil {
+		msg := h.tr.TGin(c, translations.APP_FAILED_TO_PARSE_DATA, nil)
+		response.InternalError(c, msg, err)
 		return
 	}
 
-	// Respond with paginated role data
-	response.OKWithPagination[dto.Role](c, "Roles retrieved successfully", "roles", roles, pagination)
+	msg := h.tr.TGin(c, translations.APP_RETRIEVED_SUCCESS, &map[string]any{"Name": "Roles"})
+	response.OKWithPagination[dto.Role](c, msg, "roles", roles, pagination)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/encrypt"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/errors"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/helper"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/translations"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -32,16 +33,18 @@ type UserUsecase interface {
 type UserUsecaseImpl struct {
 	Env            *config.Env
 	DB             *gorm.DB
+	Tr             *translations.Store
 	UserRepository repositories.UserRepository
 	RoleRepository repositories.RoleRepository     // Access role if needed
 	UserRoleRepo   repositories.UserRoleRepository // Assign role to user
 }
 
 // NewUserUsecase initializes the usecase with dependencies
-func NewUserUsecase(env *config.Env, db *gorm.DB, userRepository repositories.UserRepository, roleRepository repositories.RoleRepository, userRoleRepo repositories.UserRoleRepository) UserUsecase {
+func NewUserUsecase(env *config.Env, db *gorm.DB, tr *translations.Store, userRepository repositories.UserRepository, roleRepository repositories.RoleRepository, userRoleRepo repositories.UserRoleRepository) UserUsecase {
 	return &UserUsecaseImpl{
 		Env:            env,
 		DB:             db,
+		Tr:             tr,
 		UserRepository: userRepository,
 		RoleRepository: roleRepository,
 		UserRoleRepo:   userRoleRepo,
@@ -106,7 +109,9 @@ func (u *UserUsecaseImpl) Create(ctx context.Context, req *dto.Register) (*dto.U
 		// Check if email already exists
 		existing, err := u.UserRepository.GetByEmail(ctx, tx, req.Email)
 		if err == nil && existing.ID != uuid.Nil {
-			return nil, errors.NewErrorUserEmailExist()
+			msg := u.Tr.TContext(ctx, translations.APP_EMAIL_ALREADY_EXISTS, nil)
+			return nil, errors.NewBadRequest(msg, err.Error())
+
 		}
 
 		// kalau error selain "not found" → langsung return
@@ -118,7 +123,8 @@ func (u *UserUsecaseImpl) Create(ctx context.Context, req *dto.Register) (*dto.U
 		// Hash password
 		hashedPassword, err := encrypt.HashPassword(req.Password, u.Env.Auth.PasswordSecret)
 		if err != nil {
-			return nil, errors.NewBadRequest("failed to hash password", err.Error())
+			msg := u.Tr.TContext(ctx, translations.APP_INTERNAL_SERVER_ERROR, nil)
+			return nil, errors.NewBadRequest(msg, err.Error())
 		}
 		now := time.Now()
 

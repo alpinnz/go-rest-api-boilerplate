@@ -18,46 +18,6 @@ func (e *BaseError) Error() string {
 	return e.Message
 }
 
-func NewErrorAuthLoginUnauthorized() *BaseError {
-	return &BaseError{
-		Status:  response.StatusUnauthorized,
-		Code:    response.CodeUnauthorized,
-		Message: "Invalid username or password",
-	}
-}
-
-func NewErrorUserNotFound() *BaseError {
-	return &BaseError{
-		Status:  response.StatusNotFound,
-		Code:    response.CodeNotFound,
-		Message: "User not found",
-	}
-}
-
-func NewErrorUserUsernameExist() *BaseError {
-	return &BaseError{
-		Status:  response.StatusBadRequest,
-		Code:    response.CodeBadRequest,
-		Message: "Username already exists",
-	}
-}
-
-func NewErrorUserEmailExist() *BaseError {
-	return &BaseError{
-		Status:  response.StatusBadRequest,
-		Code:    response.CodeBadRequest,
-		Message: "Email already exists",
-	}
-}
-
-func NewErrorUserPasswordIncorrect() *BaseError {
-	return &BaseError{
-		Status:  response.StatusBadRequest,
-		Code:    response.CodeBadRequest,
-		Message: "Incorrect password",
-	}
-}
-
 func NewBadRequest(msg string, errs ...any) *BaseError {
 	var errorsDetail any
 	if len(errs) > 0 {
@@ -93,7 +53,7 @@ func NewDatabaseError(details string, errs any) *BaseError {
 	return &BaseError{
 		Status:  response.StatusInternalServerError,
 		Code:    response.CodeDatabaseError,
-		Message: fmt.Sprintf("Database errors: %s", details),
+		Message: fmt.Sprintf("Database errors: %s\n", details),
 		Errors:  errs,
 	}
 }

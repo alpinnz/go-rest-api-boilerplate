@@ -12,7 +12,7 @@ func WithGormTransaction(ctx context.Context, db *gorm.DB, fn func(tx *gorm.DB) 
 	tx := db.WithContext(ctx).Begin()
 	if tx.Error != nil {
 		return nil, errors.NewDatabaseError(
-			fmt.Sprintf("failed to begin transaction: %v", tx.Error),
+			fmt.Sprintf("failed to begin transaction: %v\n", tx.Error),
 			tx.Error,
 		)
 	}
@@ -34,14 +34,14 @@ func WithGormTransaction(ctx context.Context, db *gorm.DB, fn func(tx *gorm.DB) 
 
 		// tampilkan pesan asli agar trace jelas
 		return nil, errors.NewInternalError(
-			fmt.Sprintf("transaction failed: %v", err),
+			fmt.Sprintf("transaction failed: %v\n", err),
 			err,
 		)
 	}
 
 	if commitErr := tx.Commit().Error; commitErr != nil {
 		return nil, errors.NewDatabaseError(
-			fmt.Sprintf("commit failed: %v", commitErr),
+			fmt.Sprintf("commit failed: %v\n", commitErr),
 			commitErr,
 		)
 	}

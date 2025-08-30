@@ -1,8 +1,7 @@
 package response
 
 import (
-	"log"
-
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/logger"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,7 +19,7 @@ func RespondError(c *gin.Context, status Status, code Code, message string, erro
 	traceID := getTraceID(c)
 
 	// log to stdout or file
-	log.Printf("[ERROR] trace_id=%s | code=%s | message=%s | errors=%v", traceID, code, message, errors)
+	logger.Log.Error("[ERROR] trace_id=%s | code=%s | message=%s | errors=%v", traceID, code, message, errors)
 
 	c.JSON(int(status), BaseResponse{
 		TraceID: traceID,

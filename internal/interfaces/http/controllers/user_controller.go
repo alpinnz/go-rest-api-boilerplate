@@ -9,6 +9,7 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/errors"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/helper"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/response"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/translations"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/utils"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/validation"
 
@@ -18,13 +19,15 @@ import (
 // UserController handles HTTP requests related to users
 type UserController struct {
 	validator   *validation.Validator
+	tr          *translations.Store
 	userUsecase usecase.UserUsecase
 }
 
 // NewUserController initializes and returns a new UserController instance
-func NewUserController(validator *validation.Validator, userUsecase usecase.UserUsecase) *UserController {
+func NewUserController(validator *validation.Validator, tr *translations.Store, userUsecase usecase.UserUsecase) *UserController {
 	return &UserController{
 		validator:   validator,
+		tr:          tr,
 		userUsecase: userUsecase,
 	}
 }
@@ -56,12 +59,13 @@ func (h *UserController) GetAllUsers(c *gin.Context) {
 	// Convert result data to DTO
 	users, ok := result.Data.([]dto.User)
 	if !ok {
-		response.InternalError(c, "Failed to parse user data", nil)
+		msg := h.tr.TGin(c, translations.APP_FAILED_TO_PARSE_DATA, nil)
+		response.InternalError(c, msg, err)
 		return
 	}
-
 	// Send paginated success response
-	response.OKWithPagination[dto.User](c, "Users retrieved successfully", "users", users, pagination)
+	msg := h.tr.TGin(c, translations.APP_RETRIEVED_SUCCESS, &map[string]any{"Name": "Users"})
+	response.OKWithPagination[dto.User](c, msg, "users", users, pagination)
 }
 
 // GetUserByID handles GET /users/:id
@@ -86,7 +90,8 @@ func (h *UserController) GetUserByID(c *gin.Context) {
 	}
 
 	// Send success response
-	response.RespondSuccess(c, http.StatusOK, "User retrieved successfully", user)
+	msg := h.tr.TGin(c, translations.APP_RETRIEVED_SUCCESS, &map[string]any{"Name": "User"})
+	response.RespondSuccess(c, http.StatusOK, msg, user)
 }
 
 // CreateUser handles POST /users
@@ -101,7 +106,7 @@ func (h *UserController) CreateUser(c *gin.Context) {
 	}
 
 	// Validate input data
-	if err := h.validator.ValidateStruct(&userInput); err != nil {
+	if err := h.validator.ValidateStructCtx(c, &userInput); err != nil {
 		response.BadRequest(c, err.Error(), err)
 		return
 	}
@@ -118,7 +123,8 @@ func (h *UserController) CreateUser(c *gin.Context) {
 	}
 
 	// Send success response with created user
-	response.RespondSuccess(c, http.StatusCreated, "User created successfully", createdUser)
+	msg := h.tr.TGin(c, translations.APP_CREATE_SUCCESS, &map[string]any{"Name": "User"})
+	response.RespondSuccess(c, http.StatusCreated, msg, createdUser)
 }
 
 // UpdateUser handles PUT /users/:id
@@ -139,7 +145,7 @@ func (h *UserController) UpdateUser(c *gin.Context) {
 	}
 
 	// Validate input payload
-	if err := h.validator.ValidateStruct(&payload); err != nil {
+	if err := h.validator.ValidateStructCtx(c, &payload); err != nil {
 		response.BadRequest(c, err.Error(), err)
 		return
 	}
@@ -155,7 +161,8 @@ func (h *UserController) UpdateUser(c *gin.Context) {
 	}
 
 	// Send success response
-	response.RespondSuccess(c, http.StatusOK, "User updated successfully", nil)
+	msg := h.tr.TGin(c, translations.APP_UPDATE_SUCCESS, &map[string]any{"Name": "User"})
+	response.RespondSuccess(c, http.StatusOK, msg, nil)
 }
 
 // DeleteUser handles DELETE /users/:id
@@ -179,5 +186,6 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 	}
 
 	// Send success response
-	response.RespondSuccess(c, http.StatusOK, "User deleted successfully", nil)
+	msg := h.tr.TGin(c, translations.APP_DELETE_SUCCESS, &map[string]any{"Name": "User"})
+	response.RespondSuccess(c, http.StatusOK, msg, nil)
 }

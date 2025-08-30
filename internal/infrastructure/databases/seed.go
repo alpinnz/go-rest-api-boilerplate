@@ -9,6 +9,7 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/constants"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/encrypt"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/helper"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/logger"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/utils"
 	"gorm.io/gorm"
 )
@@ -35,6 +36,7 @@ func SeedRoles(ctx context.Context, db *gorm.DB) error {
 				if err := tx.WithContext(ctx).Create(&role).Error; err != nil {
 					return nil, fmt.Errorf("failed to seed role %s: %w", role.Name, err)
 				}
+				logger.Log.Info("Seeded role", "id", role.ID, "name", role.Name)
 				return role, nil
 			})
 			if err != nil {
@@ -114,7 +116,6 @@ func SeedUsers(ctx context.Context, db *gorm.DB, passwordSecret string) error {
 				// assign roles ke join table user_roles (manual)
 				userRoles := make([]entities.UserRole, 0)
 				for _, role := range user.Roles {
-
 					userRoles = append(userRoles, entities.UserRole{
 						ID:        utils.GenerateUUID(),
 						UserID:    user.ID,
@@ -124,13 +125,17 @@ func SeedUsers(ctx context.Context, db *gorm.DB, passwordSecret string) error {
 					})
 				}
 
-				// cek log
-				fmt.Printf("DEBUG userRoles for %s: %+v\n", user.Email, userRoles)
+				// logging pakai slog, bukan fmt.Println
+				logger.Log.Debug("Assigning roles to user",
+					"user", user.Email,
+					"roles", userRoles,
+				)
 
 				if err := tx.WithContext(ctx).Create(&userRoles).Error; err != nil {
 					return nil, fmt.Errorf("failed to seed user roles for %s: %w", user.Email, err)
 				}
 
+				logger.Log.Info("Seeded user", "id", user.ID, "email", user.Email)
 				return user, nil
 			})
 			if err != nil {

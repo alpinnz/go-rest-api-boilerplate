@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -12,16 +10,21 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/infrastructure/databases"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/server"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/app"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/logger"
 )
 
 func main() {
+	// Init global logger
+	logger.Init()
+
 	env := config.NewEnv()
-	fmt.Println("Connecting to DB at:", env.Postgres.Host)
+	logger.Log.Info("Connecting to DB", "host", env.Postgres.Host, "port", env.Postgres.Port)
 
 	// Connect DB
 	postgres, err := databases.NewPostgres(env.Postgres)
 	if err != nil {
-		log.Fatal("Postgres connection error:", err)
+		logger.Log.Error("Postgres connection error", "error", err)
+		return
 	}
 
 	// App context with signal handling
@@ -30,39 +33,43 @@ func main() {
 
 	// Migration & seeders
 	if err := databases.Migrate(postgres); err != nil {
-		log.Fatal(err)
+		logger.Log.Error("Migration error", "error", err)
+		return
 	}
 	if err := databases.SeedRoles(ctx, postgres); err != nil {
-		log.Fatal(err)
+		logger.Log.Error("Seed roles error", "error", err)
+		return
 	}
 	if err := databases.SeedUsers(ctx, postgres, env.Auth.PasswordSecret); err != nil {
-		log.Fatal(err)
+		logger.Log.Error("Seed users error", "error", err)
+		return
 	}
 
 	// Build HTTP server
 	httpServer, err := server.NewHTTPServer(&env, postgres)
 	if err != nil {
-		log.Fatal("Failed to init HTTP server:", err)
+		logger.Log.Error("Failed to init HTTP server", "error", err)
+		return
 	}
 
 	// Run server
 	go func() {
-		log.Println("Server started on", env.Server.Address)
+		logger.Log.Info("Server started", "address", env.Server.Address)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Server error: %s\n", err)
+			logger.Log.Error("Server error", "error", err)
 		}
 	}()
 
 	// Wait for cancel (SIGINT/SIGTERM)
 	<-ctx.Done()
-	log.Println("Shutting down server...")
+	logger.Log.Warn("Shutting down server...")
 
 	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("Server forced to shutdown: %s", err)
+		logger.Log.Error("Server forced to shutdown", "error", err)
 	}
-	log.Println("Server exited gracefully")
+	logger.Log.Info("Server exited gracefully")
 }

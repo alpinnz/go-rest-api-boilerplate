@@ -14,10 +14,10 @@ const AuthRefreshTokenExpiry = time.Hour * 24 * 7
 
 const XAccessToken = "X-Access-Token"
 const XRefreshToken = "X-Refresh-Token"
-const XLocate = "X-Locate"
+const XLocale = "X-Locale"
 const XDevice = "X-Device"
+const XLocate = "X-Locate"
 const XPlatform = "X-Platform"
-const XLatitude = "X-Latitude"
 const XLongitude = "X-Longitude"
 
 var (

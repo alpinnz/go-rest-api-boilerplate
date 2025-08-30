@@ -13,6 +13,7 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/encrypt"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/errors"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/helper"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/translations"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -32,6 +33,7 @@ type AuthUsecase interface {
 type AuthUsecaseImpl struct {
 	Env                   *config.Env
 	DB                    *gorm.DB
+	Tr                    *translations.Store
 	UserRepository        repositories.UserRepository
 	AuthSessionRepository repositories.AuthSessionRepository
 	RoleRepository        repositories.RoleRepository     // Access role if needed
@@ -42,6 +44,7 @@ type AuthUsecaseImpl struct {
 func NewAuthUsecase(
 	env *config.Env,
 	db *gorm.DB,
+	tr *translations.Store,
 	userRepository repositories.UserRepository,
 	authSessionRepository repositories.AuthSessionRepository,
 	roleRepository repositories.RoleRepository,
@@ -50,6 +53,7 @@ func NewAuthUsecase(
 	return &AuthUsecaseImpl{
 		DB:                    db,
 		Env:                   env,
+		Tr:                    tr,
 		UserRepository:        userRepository,
 		AuthSessionRepository: authSessionRepository,
 		RoleRepository:        roleRepository,
@@ -67,14 +71,16 @@ func (u *AuthUsecaseImpl) Login(ctx context.Context, req dto.Login) (*dto.AuthSe
 	res, err := helper.WithGormTransaction(ctx, u.DB, func(tx *gorm.DB) (interface{}, error) {
 		// Step 1: Find user by email.
 		user, err := u.UserRepository.GetByEmail(ctx, tx, utils.EmailNormalizer(req.Email))
+		msg := u.Tr.TContext(ctx, translations.AUTH_INVALID_EMAIL_OR_PASSWORD, nil)
 		if err != nil {
 			// Do not expose whether email exists.
-			return nil, errors.NewBadRequest("invalid email or password", err.Error())
+			return nil, errors.NewBadRequest(msg, err.Error())
 		}
 
 		// Step 2: Validate password.
-		if _, err = encrypt.ComparePassword(user.Password, req.Password, u.Env.Auth.PasswordSecret); err != nil {
-			return nil, errors.NewBadRequest("invalid email or password", err.Error())
+		if match, err := encrypt.ComparePassword(user.Password, req.Password, u.Env.Auth.PasswordSecret); err != nil || !match {
+			msg := u.Tr.TContext(ctx, translations.AUTH_INVALID_EMAIL_OR_PASSWORD, nil)
+			return nil, errors.NewBadRequest(msg)
 		}
 
 		// Step 3: Generate JWT tokens.
@@ -87,11 +93,13 @@ func (u *AuthUsecaseImpl) Login(ctx context.Context, req dto.Login) (*dto.AuthSe
 
 		accessToken, err := encrypt.GenerateHash(accessClaims, u.Env.Auth.AccessTokenSecret)
 		if err != nil {
-			return nil, errors.NewInternalError("failed to generate access token", err.Error())
+			msg := u.Tr.TContext(ctx, translations.APP_INTERNAL_SERVER_ERROR, nil)
+			return nil, errors.NewInternalError(msg, err.Error())
 		}
 		refreshToken, err := encrypt.GenerateHash(refreshClaims, u.Env.Auth.RefreshTokenSecret)
 		if err != nil {
-			return nil, errors.NewInternalError("failed to generate refresh token", err.Error())
+			msg := u.Tr.TContext(ctx, translations.APP_INTERNAL_SERVER_ERROR, nil)
+			return nil, errors.NewInternalError(msg, err.Error())
 		}
 
 		// Step 4: Save session in DB.
@@ -127,7 +135,8 @@ func (u *AuthUsecaseImpl) Register(ctx context.Context, req dto.Register) (*dto.
 		// Check if email already exists
 		existing, err := u.UserRepository.GetByEmail(ctx, tx, req.Email)
 		if err == nil && existing.ID != uuid.Nil {
-			return nil, errors.NewErrorUserEmailExist()
+			msg := u.Tr.TContext(ctx, translations.APP_EMAIL_ALREADY_EXISTS, nil)
+			return nil, errors.NewBadRequest(msg, err.Error())
 		}
 
 		// kalau error selain "not found" → langsung return
@@ -139,7 +148,8 @@ func (u *AuthUsecaseImpl) Register(ctx context.Context, req dto.Register) (*dto.
 		// Hash password
 		hashedPassword, err := encrypt.HashPassword(req.Password, u.Env.Auth.PasswordSecret)
 		if err != nil {
-			return nil, errors.NewBadRequest("failed to hash password", err.Error())
+			msg := u.Tr.TContext(ctx, translations.APP_INTERNAL_SERVER_ERROR, nil)
+			return nil, errors.NewBadRequest(msg, err.Error())
 		}
 		now := time.Now().UTC()
 
@@ -189,11 +199,13 @@ func (u *AuthUsecaseImpl) Register(ctx context.Context, req dto.Register) (*dto.
 
 		accessToken, err := encrypt.GenerateHash(accessClaims, u.Env.Auth.AccessTokenSecret)
 		if err != nil {
-			return nil, errors.NewInternalError("failed to generate access token", err.Error())
+			msg := u.Tr.TContext(ctx, translations.APP_INTERNAL_SERVER_ERROR, nil)
+			return nil, errors.NewInternalError(msg, err.Error())
 		}
 		refreshToken, err := encrypt.GenerateHash(refreshClaims, u.Env.Auth.RefreshTokenSecret)
 		if err != nil {
-			return nil, errors.NewInternalError("failed to generate refresh token", err.Error())
+			msg := u.Tr.TContext(ctx, translations.APP_INTERNAL_SERVER_ERROR, nil)
+			return nil, errors.NewInternalError(msg, err.Error())
 		}
 
 		// Step 4: Save session in DB.

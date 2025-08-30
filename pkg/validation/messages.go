@@ -57,5 +57,5 @@ func messageForTag(fe validator.FieldError, s interface{}) string {
 			return msg
 		}
 	}
-	return fmt.Sprintf("%s is not valid (%s)", jsonFieldName(fe, s), fe.Tag())
+	return fmt.Sprintf("%s is not valid (%s)\n", jsonFieldName(fe, s), fe.Tag())
 }

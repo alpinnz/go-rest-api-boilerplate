@@ -8,6 +8,7 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/interfaces/http/dto"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/interfaces/http/mapper"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/helper"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/translations"
 	"gorm.io/gorm"
 )
 
@@ -19,13 +20,15 @@ type RoleUsecase interface {
 type RoleUsecaseImpl struct {
 	Env            *config.Env
 	DB             *gorm.DB
+	Tr             *translations.Store
 	RoleRepository repositories.RoleRepository
 }
 
-func NewRoleUsecase(env *config.Env, db *gorm.DB, repo repositories.RoleRepository) RoleUsecase {
+func NewRoleUsecase(env *config.Env, db *gorm.DB, tr *translations.Store, repo repositories.RoleRepository) RoleUsecase {
 	return &RoleUsecaseImpl{
 		Env:            env,
 		DB:             db,
+		Tr:             tr,
 		RoleRepository: repo,
 	}
 }

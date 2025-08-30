@@ -6,6 +6,7 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/errors"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/helper"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/response"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/translations"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/validation"
 
 	"github.com/gin-gonic/gin"
@@ -15,13 +16,15 @@ import (
 // It acts as a bridge between the HTTP layer and the authentication use case layer.
 type AuthController struct {
 	validator   *validation.Validator // Used for validating request payloads
-	authUsecase usecase.AuthUsecase   // Encapsulates business logic for authentication
+	tr          *translations.Store
+	authUsecase usecase.AuthUsecase // Encapsulates business logic for authentication
 }
 
 // NewAuthController initializes and returns a new AuthController instance.
-func NewAuthController(validator *validation.Validator, authUsecase usecase.AuthUsecase) *AuthController {
+func NewAuthController(validator *validation.Validator, tr *translations.Store, authUsecase usecase.AuthUsecase) *AuthController {
 	return &AuthController{
 		validator:   validator,
+		tr:          tr,
 		authUsecase: authUsecase,
 	}
 }
@@ -33,10 +36,11 @@ func (h *AuthController) Login(c *gin.Context) {
 
 	// Step 1: Bind & validate request body
 	if err := helper.ShouldBindJSON(c, &input); err != nil {
-		response.BadRequest(c, "Invalid request payload", err)
+		msg := h.tr.TGin(c, translations.APP_INVALID_REQUEST_PAYLOAD, nil)
+		response.BadRequest(c, msg, err)
 		return
 	}
-	if err := h.validator.ValidateStruct(&input); err != nil {
+	if err := h.validator.ValidateStructCtx(c, &input); err != nil {
 		response.BadRequest(c, err.Error(), err)
 		return
 	}
@@ -65,10 +69,11 @@ func (h *AuthController) Register(c *gin.Context) {
 
 	// Step 1: Bind & validate request body
 	if err := helper.ShouldBindJSON(c, &input); err != nil {
-		response.BadRequest(c, "Invalid request payload", err)
+		msg := h.tr.TGin(c, translations.APP_INVALID_REQUEST_PAYLOAD, nil)
+		response.BadRequest(c, msg, err)
 		return
 	}
-	if err := h.validator.ValidateStruct(&input); err != nil {
+	if err := h.validator.ValidateStructCtx(c, &input); err != nil {
 		response.BadRequest(c, err.Error(), err)
 		return
 	}

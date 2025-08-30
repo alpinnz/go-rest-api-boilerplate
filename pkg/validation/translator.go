@@ -7,11 +7,11 @@ import (
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 )
 
-// InitEnglishTranslator initializes English translations for validation errors.
+// InitEnglishTranslator initializes English translations.go for validation errors.
 func InitEnglishTranslator(v *validator.Validate) (ut.Translator, error) {
 	translator := en.New()
 	uni := ut.New(translator, translator)
-	trans, _ := uni.GetTranslator("en")
+	trans, _ := uni.GetTranslator("en_EN")
 
 	if err := en_translations.RegisterDefaultTranslations(v, trans); err != nil {
 		return nil, err

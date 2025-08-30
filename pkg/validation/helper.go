@@ -10,7 +10,7 @@ import (
 // Example: "required" -> "email is required"
 func msg(tpl string) func(fe validator.FieldError, s interface{}) string {
 	return func(fe validator.FieldError, s interface{}) string {
-		return fmt.Sprintf(tpl, fmt.Sprintf("'%s'", jsonFieldName(fe, s)))
+		return fmt.Sprintln(tpl, fmt.Sprintf("'%s'", jsonFieldName(fe, s)))
 	}
 }
 
@@ -18,6 +18,6 @@ func msg(tpl string) func(fe validator.FieldError, s interface{}) string {
 // Example: "gte=18" -> "age must be greater than or equal to 18"
 func msgWithParam(tpl string) func(fe validator.FieldError, s interface{}) string {
 	return func(fe validator.FieldError, s interface{}) string {
-		return fmt.Sprintf(tpl, fmt.Sprintf("'%s'", jsonFieldName(fe, s)), fe.Param())
+		return fmt.Sprintln(tpl, fmt.Sprintf("'%s'", jsonFieldName(fe, s)), fe.Param())
 	}
 }

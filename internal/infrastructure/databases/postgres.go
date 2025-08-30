@@ -2,10 +2,8 @@ package databases
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"time"
 
+	customLogger "github.com/alpinnz/go-rest-api-boilerplate/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -22,24 +20,17 @@ type PostgresConfig struct {
 }
 
 func NewPostgres(p PostgresConfig) (*gorm.DB, error) {
-	level := logger.Silent
-	if p.Debug == true {
-		level = logger.Info
-	}
-	gormLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // writer
-		logger.Config{
-			SlowThreshold:             time.Second,
-			LogLevel:                  level, // using level from parameter
-			IgnoreRecordNotFoundError: true,
-			Colorful:                  true,
-		},
-	)
-
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=Asia/Jakarta",
 		p.Host, p.User, p.Pass, p.Name, p.Port,
 	)
+
+	var gormLogger logger.Interface
+	if p.Debug {
+		gormLogger = customLogger.NewGormLogger(logger.Info)
+	} else {
+		gormLogger = customLogger.NewGormLogger(logger.Silent)
+	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{},
