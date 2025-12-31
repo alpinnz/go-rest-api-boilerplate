@@ -8,15 +8,28 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// Token types
+const (
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+)
+
+// Token expiration durations
+const (
+	AccessTokenExpiration  = 15 * time.Minute   // 15 minutes
+	RefreshTokenExpiration = 7 * 24 * time.Hour // 7 days
+)
+
 // jwtSecret holds the secret key used for signing JWT tokens.
 // Should be set via SetJWTSecret during application initialization.
 // Default value is placeholder and MUST be changed in production.
 var jwtSecret = []byte("change-this-secret-key")
 
-// Claims represents JWT token claims including user identity.
+// Claims represents JWT token claims including user identity and token type.
 // Embeds jwt.RegisteredClaims for standard claims (exp, iat, etc.).
 type Claims struct {
-	UserID int64 `json:"user_id"` // Authenticated user's unique identifier
+	UserID    int64  `json:"user_id"`    // Authenticated user's unique identifier
+	TokenType string `json:"token_type"` // Token type: "access" or "refresh"
 	jwt.RegisteredClaims
 }
 
@@ -31,8 +44,8 @@ func SetJWTSecret(secret string) {
 	jwtSecret = []byte(secret)
 }
 
-// GenerateToken creates a new JWT token for authenticated user.
-// Token includes user ID and expires after 24 hours from creation.
+// GenerateToken creates a new JWT access token for authenticated user.
+// Token expires after 15 minutes from creation.
 // Uses HMAC-SHA256 algorithm for signing.
 // Returns signed token string or error if signing fails.
 //
@@ -44,10 +57,28 @@ func SetJWTSecret(secret string) {
 //	}
 //	// Use token in Authorization header: Bearer <token>
 func GenerateToken(userID int64) (string, error) {
+	return generateTokenWithType(userID, TokenTypeAccess, AccessTokenExpiration)
+}
+
+// GenerateAccessToken creates a new JWT access token (short-lived).
+// Token expires after 15 minutes.
+func GenerateAccessToken(userID int64) (string, error) {
+	return generateTokenWithType(userID, TokenTypeAccess, AccessTokenExpiration)
+}
+
+// GenerateRefreshToken creates a new JWT refresh token (long-lived).
+// Token expires after 7 days.
+func GenerateRefreshToken(userID int64) (string, error) {
+	return generateTokenWithType(userID, TokenTypeRefresh, RefreshTokenExpiration)
+}
+
+// generateTokenWithType creates a JWT token with specified type and expiration.
+func generateTokenWithType(userID int64, tokenType string, expiration time.Duration) (string, error) {
 	claims := Claims{
-		UserID: userID,
+		UserID:    userID,
+		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

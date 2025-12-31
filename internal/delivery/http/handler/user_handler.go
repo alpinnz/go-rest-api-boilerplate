@@ -197,3 +197,45 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 
 	response.Success(c, user)
 }
+
+// RefreshToken godoc
+// @Summary      Refresh access token
+// @Description  Generate new access token using refresh token
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        request body object{refresh_token=string} true "Refresh token"
+// @Success      200  {object}  response.Response{data=usecase.LoginResponse}
+// @Failure      400  {object}  response.Response
+// @Failure      401  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /auth/refresh [post]
+func (h *UserHandler) RefreshToken(c *gin.Context) {
+	var input struct {
+		RefreshToken string `json:"refresh_token" validate:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_json"))
+		return
+	}
+
+	// Validate input
+	if errs := validator.ValidateStruct(input); len(errs) > 0 {
+		response.ValidationError(c, errs)
+		return
+	}
+
+	result, err := h.userUseCase.RefreshToken(c.Request.Context(), input.RefreshToken)
+	if err != nil {
+		if err == domain.ErrInvalidCredentials || err == domain.ErrSessionExpired {
+			response.Unauthorized(c, domain.NewAppError("auth.invalid_refresh_token"))
+			return
+		}
+		response.InternalServerError(c, domain.NewAppError("common.error"))
+		return
+	}
+
+	response.Success(c, result)
+}

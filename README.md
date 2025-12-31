@@ -147,12 +147,184 @@ make lint          # Run linter
 - `GET  /api/v1/health` - Health check
 - `GET  /docs/swagger.json` - OpenAPI specification
 - `POST /api/v1/auth/register` - User registration
-- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/login` - User login (returns access_token & refresh_token)
+- `POST /api/v1/auth/refresh` - Refresh access token using refresh_token
 
-### Protected (Requires JWT)
+### Protected (Requires JWT Access Token)
 - `POST /api/v1/auth/logout` - User logout
 - `GET  /api/v1/users/me` - Get current user profile
 - `GET  /api/v1/users/:id` - Get user by ID
+
+## Authentication
+
+This API uses JWT-based authentication with access and refresh tokens for optimal security and user experience.
+
+### Token Types
+
+**Access Token**
+- Lifetime: 15 minutes
+- Used for API requests
+- Sent in `Authorization: Bearer <token>` header
+- Short-lived to minimize risk if compromised
+
+**Refresh Token**
+- Lifetime: 7 days
+- Used to obtain new access tokens
+- Sent in request body to `/auth/refresh` endpoint
+- Single-use (token rotation for security)
+
+### How It Works
+
+1. **Login**: User provides credentials, receives both tokens
+2. **API Request**: Client uses access token in Authorization header
+3. **Token Expired**: When 401 received, use refresh token to get new pair
+4. **Logout**: Both tokens invalidated immediately via Redis
+
+### Login Response
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+```
+
+### Client Implementation
+
+```javascript
+class AuthClient {
+  async apiRequest(url, options = {}) {
+    // Try with current access token
+    let response = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${this.accessToken}`
+      }
+    })
+
+    // If 401, refresh and retry
+    if (response.status === 401) {
+      const refreshed = await this.refreshToken()
+      if (refreshed) {
+        response = await fetch(url, {
+          ...options,
+          headers: {
+            ...options.headers,
+            'Authorization': `Bearer ${this.accessToken}`
+          }
+        })
+      }
+    }
+
+    return response
+  }
+
+  async refreshToken() {
+    const response = await fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: this.refreshToken })
+    })
+
+    if (response.ok) {
+      const { data } = await response.json()
+      this.accessToken = data.access_token
+      this.refreshToken = data.refresh_token
+      return true
+    }
+
+    // Refresh failed, redirect to login
+    window.location.href = '/login'
+    return false
+  }
+}
+```
+
+### Security Features
+
+- **Token Rotation**: Refresh tokens are single-use, new pair generated each refresh
+- **Short-Lived Access**: 15-minute expiration minimizes exposure
+- **Server-Side Sessions**: All tokens stored in Redis, can be immediately revoked
+- **Token Type Validation**: Access tokens can't be used as refresh tokens
+- **HTTPS Required**: Always use HTTPS in production
+
+### Configuration
+
+Edit `pkg/auth/jwt.go` to customize token expiration:
+
+```go
+const (
+    AccessTokenExpiration  = 15 * time.Minute  // Change as needed
+    RefreshTokenExpiration = 7 * 24 * time.Hour // Change as needed
+)
+```
+
+### Redis Storage
+
+```
+Access Token:  session:<token> -> user_id (TTL: 15 min)
+Refresh Token: refresh:<token> -> access_token (TTL: 7 days)
+```
+
+### Usage Examples
+```bash
+# Use access token in Authorization header
+curl -H "Authorization: Bearer <access_token>" \
+     http://localhost:8080/api/v1/users/me
+
+# Refresh access token when expired
+curl -X POST http://localhost:8080/api/v1/auth/refresh \
+     -H "Content-Type: application/json" \
+     -d '{"refresh_token": "<refresh_token>"}'
+```
+
+### Troubleshooting
+
+**Access Token Expired (401)**
+- Use refresh token to get new access token
+
+**Refresh Token Expired (401)**
+- User must login again (7 days passed)
+
+**Both Tokens Invalid**
+- User logged out or server restarted (Redis cleared)
+- User must login again
+
+## Localization
+
+Multi-language support with automatic detection from `Accept-Language` header.
+
+### Supported Languages
+- English (en)
+- Indonesian (id)
+
+### Usage
+
+```bash
+# English response
+curl -H "Accept-Language: en" http://localhost:8080/api/v1/auth/login
+
+# Indonesian response
+curl -H "Accept-Language: id" http://localhost:8080/api/v1/auth/login
+```
+
+### Adding New Language
+
+1. Create new JSON file in `internal/localization/lang/`:
+```bash
+cp internal/localization/lang/en.json internal/localization/lang/fr.json
+```
+
+2. Translate all keys in the new file
+
+3. Load in router (automatic via middleware)
+
+See [internal/localization/README.md](internal/localization/README.md) for details.
 
 ## Documentation
 

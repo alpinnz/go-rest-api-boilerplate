@@ -60,6 +60,7 @@ func (r *Router) Setup() *gin.Engine {
 		{
 			auth.POST("/register", r.userHandler.Register)
 			auth.POST("/login", r.userHandler.Login)
+			auth.POST("/refresh", r.userHandler.RefreshToken)
 			auth.POST("/logout", r.authMiddleware.Authenticate(), r.userHandler.Logout)
 		}
 

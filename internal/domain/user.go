@@ -50,11 +50,13 @@ type UserRepository interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-// Session represents an active user session stored in Redis.
-// Sessions are used for fast authentication token validation.
+// Session represents an active user session with access and refresh tokens.
+// Sessions are stored in Redis for fast authentication validation.
 type Session struct {
-	Token  string // JWT token used as Redis key
-	UserID int64  // Associated user ID
+	AccessToken  string    // JWT access token (short-lived, used for API requests)
+	RefreshToken string    // JWT refresh token (long-lived, used to get new access token)
+	UserID       int64     // Associated user ID
+	ExpiresAt    time.Time // Access token expiration time
 }
 
 // SessionRepository defines data access methods for Session storage.
@@ -76,4 +78,19 @@ type SessionRepository interface {
 	// Used for immediate session invalidation.
 	// Returns error if Redis operation fails.
 	Delete(ctx context.Context, token string) error
+
+	// SetRefreshToken stores refresh token mapping to access token in Redis.
+	// Used to validate and track refresh token usage.
+	// Returns error if Redis operation fails.
+	SetRefreshToken(ctx context.Context, refreshToken string, accessToken string, expiration time.Duration) error
+
+	// GetByRefreshToken retrieves access token for a given refresh token.
+	// Returns ErrSessionExpired if refresh token doesn't exist or expired.
+	// Returns error if Redis operation fails.
+	GetByRefreshToken(ctx context.Context, refreshToken string) (string, error)
+
+	// DeleteRefreshToken removes refresh token from Redis.
+	// Used when refresh token is used or during logout.
+	// Returns error if Redis operation fails.
+	DeleteRefreshToken(ctx context.Context, refreshToken string) error
 }

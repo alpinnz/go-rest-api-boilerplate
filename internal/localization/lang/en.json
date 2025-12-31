@@ -44,6 +44,7 @@
   },
   "auth": {
     "invalid_credentials": "Invalid email or password",
+    "invalid_refresh_token": "Invalid or expired refresh token",
     "unauthorized": "Unauthorized access",
     "token_expired": "Token has expired",
     "token_invalid": "Invalid token",

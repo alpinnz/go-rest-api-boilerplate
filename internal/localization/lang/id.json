@@ -44,6 +44,7 @@
   },
   "auth": {
     "invalid_credentials": "Email atau password tidak valid",
+    "invalid_refresh_token": "Refresh token tidak valid atau kadaluarsa",
     "unauthorized": "Akses tidak diizinkan",
     "token_expired": "Token telah kedaluwarsa",
     "token_invalid": "Token tidak valid",
