@@ -7,6 +7,9 @@ Application-specific code following Clean Architecture principles.
 ```
 internal/
 ├── delivery/http/       HTTP handlers and routing
+│   ├── dto/            Data Transfer Objects
+│   ├── handler/        HTTP handlers
+│   └── router/         Route definitions
 ├── domain/              Business entities and interfaces
 ├── infrastructure/      External service integrations
 ├── localization/        Multi-language support
@@ -68,15 +71,23 @@ HTTP layer for handling requests and responses.
 **Structure:**
 ```
 delivery/http/
+├── dto/        Data Transfer Objects (JSON serialization)
 ├── handler/    Request handlers
 └── router/     Route definitions
 ```
 
 **Responsibilities:**
 - Parse HTTP requests
-- Validate request format
+- Validate request format (via DTOs)
+- Map DTOs to usecase inputs
 - Call usecase layer
+- Map usecase outputs to DTOs
 - Format HTTP responses
+
+**DTO Pattern:**
+- DTOs contain JSON and validation tags
+- Handlers map between DTOs and domain entities
+- Separation between HTTP format and business logic
 
 ### domain/
 

@@ -22,21 +22,45 @@ func main() {
 }
 ```
 
-### Generate Token
+### Token Types
 
-Create JWT token for authenticated user:
+**Access Token** (short-lived):
+- Lifetime: 15 minutes
+- Used for API requests
+- Sent in Authorization header
 
+**Refresh Token** (long-lived):
+- Lifetime: 7 days
+- Used to obtain new access tokens
+- Single-use (rotation pattern)
+
+### Generate Tokens
+
+**Access Token:**
 ```go
-token, err := auth.GenerateToken(userID)
+accessToken, err := auth.GenerateAccessToken(userID)
 if err != nil {
     return err
 }
 ```
 
+**Refresh Token:**
+```go
+refreshToken, err := auth.GenerateRefreshToken(userID)
+if err != nil {
+    return err
+}
+```
+
+**Legacy (backward compatible):**
+```go
+token, err := auth.GenerateToken(userID) // Returns access token
+```
+
 Token specifications:
 - Algorithm: HMAC-SHA256
-- Expiration: 24 hours
-- Claims: `user_id`, `exp`, `iat`
+- Claims: `user_id`, `token_type`, `exp`, `iat`
+- Token types: `"access"` or `"refresh"`
 
 ### Validate Token
 
@@ -49,19 +73,28 @@ if err != nil {
 }
 
 userID := claims.UserID
+tokenType := claims.TokenType // "access" or "refresh"
 ```
 
 Validation checks:
 - Signing method verification
 - Signature validation
 - Expiration time
+- Token type verification
 
 ### Token Usage
 
-Include token in Authorization header:
-
+**API Request:**
 ```
-Authorization: Bearer <token>
+Authorization: Bearer <access_token>
+```
+
+**Refresh Flow:**
+```
+POST /api/v1/auth/refresh
+{
+  "refresh_token": "<refresh_token>"
+}
 ```
 
 ## Password Management

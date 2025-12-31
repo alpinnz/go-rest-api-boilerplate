@@ -29,21 +29,24 @@ func NewUserUseCase(
 	}
 }
 
+// RegisterInput represents plain input for registration (no HTTP concerns)
 type RegisterInput struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-	Name     string `json:"name" validate:"required,min=2"`
+	Email    string
+	Password string
+	Name     string
 }
 
+// LoginInput represents plain input for login (no HTTP concerns)
 type LoginInput struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
+	Email    string
+	Password string
 }
 
-type LoginResponse struct {
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
-	User         *domain.User `json:"user"`
+// AuthResult represents authentication result (no HTTP concerns)
+type AuthResult struct {
+	AccessToken  string
+	RefreshToken string
+	User         *domain.User
 }
 
 func (uc *UserUseCase) Register(ctx context.Context, input RegisterInput) (*domain.User, error) {
@@ -79,7 +82,7 @@ func (uc *UserUseCase) Register(ctx context.Context, input RegisterInput) (*doma
 	return user, nil
 }
 
-func (uc *UserUseCase) Login(ctx context.Context, input LoginInput) (*LoginResponse, error) {
+func (uc *UserUseCase) Login(ctx context.Context, input LoginInput) (*AuthResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout)
 	defer cancel()
 
@@ -109,7 +112,7 @@ func (uc *UserUseCase) Login(ctx context.Context, input LoginInput) (*LoginRespo
 	}
 
 	// Store access token session
-	if err := uc.sessionRepo.Set(ctx, accessToken, user.ID, auth.AccessTokenExpiration); err != nil {
+	if err := uc.sessionRepo.SetAccessToken(ctx, accessToken, user.ID, auth.AccessTokenExpiration); err != nil {
 		return nil, err
 	}
 
@@ -118,7 +121,7 @@ func (uc *UserUseCase) Login(ctx context.Context, input LoginInput) (*LoginRespo
 		return nil, err
 	}
 
-	return &LoginResponse{
+	return &AuthResult{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		User:         user,
@@ -129,12 +132,12 @@ func (uc *UserUseCase) Logout(ctx context.Context, token string) error {
 	ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout)
 	defer cancel()
 
-	return uc.sessionRepo.Delete(ctx, token)
+	return uc.sessionRepo.DeleteAccessToken(ctx, token)
 }
 
 // RefreshToken generates new access token from valid refresh token.
 // Returns new access token and updated refresh token.
-func (uc *UserUseCase) RefreshToken(ctx context.Context, refreshToken string) (*LoginResponse, error) {
+func (uc *UserUseCase) RefreshToken(ctx context.Context, refreshToken string) (*AuthResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout)
 	defer cancel()
 
@@ -155,13 +158,13 @@ func (uc *UserUseCase) RefreshToken(ctx context.Context, refreshToken string) (*
 		return nil, domain.ErrSessionExpired
 	}
 
-	// Delete old access token session
-	_ = uc.sessionRepo.Delete(ctx, oldAccessToken)
+	// DeleteAccessToken old access token session
+	_ = uc.sessionRepo.DeleteAccessToken(ctx, oldAccessToken)
 
-	// Delete used refresh token
+	// DeleteAccessToken used refresh token
 	_ = uc.sessionRepo.DeleteRefreshToken(ctx, refreshToken)
 
-	// Get user data
+	// GetAccessToken user data
 	user, err := uc.userRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
 		return nil, domain.ErrNotFound
@@ -180,7 +183,7 @@ func (uc *UserUseCase) RefreshToken(ctx context.Context, refreshToken string) (*
 	}
 
 	// Store new access token session
-	if err := uc.sessionRepo.Set(ctx, newAccessToken, user.ID, auth.AccessTokenExpiration); err != nil {
+	if err := uc.sessionRepo.SetAccessToken(ctx, newAccessToken, user.ID, auth.AccessTokenExpiration); err != nil {
 		return nil, err
 	}
 
@@ -189,7 +192,7 @@ func (uc *UserUseCase) RefreshToken(ctx context.Context, refreshToken string) (*
 		return nil, err
 	}
 
-	return &LoginResponse{
+	return &AuthResult{
 		AccessToken:  newAccessToken,
 		RefreshToken: newRefreshToken,
 		User:         user,
@@ -212,7 +215,7 @@ func (uc *UserUseCase) ValidateSession(ctx context.Context, token string) (int64
 	ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout)
 	defer cancel()
 
-	userID, err := uc.sessionRepo.Get(ctx, token)
+	userID, err := uc.sessionRepo.GetAccessToken(ctx, token)
 	if err != nil {
 		return 0, err
 	}

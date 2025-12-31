@@ -44,7 +44,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_usecase.LoginInput"
+                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.LoginRequest"
                         }
                     }
                 ],
@@ -60,7 +60,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_usecase.LoginResponse"
+                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.LoginResponse"
                                         }
                                     }
                                 }
@@ -155,12 +155,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "refresh_token": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.RefreshTokenRequest"
                         }
                     }
                 ],
@@ -176,7 +171,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_usecase.LoginResponse"
+                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.LoginResponse"
                                         }
                                     }
                                 }
@@ -231,7 +226,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_usecase.RegisterInput"
+                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.RegisterRequest"
                         }
                     }
                 ],
@@ -247,7 +242,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_domain.User"
+                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.UserDTO"
                                         }
                                     }
                                 }
@@ -305,7 +300,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get authenticated user's profile information",
+                "description": "GetAccessToken authenticated user's profile information",
                 "consumes": [
                     "application/json"
                 ],
@@ -315,7 +310,7 @@
                 "tags": [
                     "Users"
                 ],
-                "summary": "Get current user profile",
+                "summary": "GetAccessToken current user profile",
                 "parameters": [
                     {
                         "type": "string",
@@ -337,7 +332,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_domain.User"
+                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.UserDTO"
                                         }
                                     }
                                 }
@@ -372,7 +367,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get user information by user ID",
+                "description": "GetAccessToken user information by user ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -382,7 +377,7 @@
                 "tags": [
                     "Users"
                 ],
-                "summary": "Get user by ID",
+                "summary": "GetAccessToken user by ID",
                 "parameters": [
                     {
                         "type": "string",
@@ -411,7 +406,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_domain.User"
+                                            "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.UserDTO"
                                         }
                                     }
                                 }
@@ -447,31 +442,7 @@
         }
     },
     "definitions": {
-        "github_com_alpinnz_go-rest-api-boilerplate_internal_domain.User": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "description": "soft delete timestamp",
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_alpinnz_go-rest-api-boilerplate_internal_usecase.LoginInput": {
+        "github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -486,7 +457,7 @@
                 }
             }
         },
-        "github_com_alpinnz_go-rest-api-boilerplate_internal_usecase.LoginResponse": {
+        "github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.LoginResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -496,11 +467,22 @@
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_domain.User"
+                    "$ref": "#/definitions/github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.UserDTO"
                 }
             }
         },
-        "github_com_alpinnz_go-rest-api-boilerplate_internal_usecase.RegisterInput": {
+        "github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.RefreshTokenRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.RegisterRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -518,6 +500,26 @@
                 "password": {
                     "type": "string",
                     "minLength": 8
+                }
+            }
+        },
+        "github_com_alpinnz_go-rest-api-boilerplate_internal_delivery_http_dto.UserDTO": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },

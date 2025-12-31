@@ -17,26 +17,47 @@ Struct field validation using go-playground/validator/v10.
 Define validation rules using struct tags:
 
 ```go
-type RegisterInput struct {
+type RegisterRequest struct {
     Email    string `json:"email" validate:"required,email"`
     Password string `json:"password" validate:"required,min=8"`
     Name     string `json:"name" validate:"required,min=2"`
 }
 
 func handler(c *gin.Context) {
-    var input RegisterInput
+    var input RegisterRequest
     if err := c.ShouldBindJSON(&input); err != nil {
         return err
     }
     
-    // New: Returns []domain.AppError for localization
+    // Returns []domain.AppError with error codes
     errs := validator.ValidateStruct(input)
     if len(errs) > 0 {
-        // Use with localization
-        response.ValidationErrorI18n(c, dict, errs)
+        // Auto-localized based on context
+        response.ValidationError(c, errs)
         return
     }
 }
+```
+
+### Error Code Format
+
+Validator converts validation errors to codes following pattern:
+```
+validation.{field_name}.{rule_name}
+```
+
+**Examples:**
+- `validation.email.required` - Email field is required
+- `validation.email.email` - Email format is invalid
+- `validation.password.min` - Password minimum length not met
+- `validation.name.required` - Name field is required
+
+**Parameters** are included for rules like `min`, `max`:
+```go
+// Rule: validate:"min=8"
+// Code: validation.password.min
+// Params: {"min": "8"}
+// Message: "Password must be at least 8 characters"
 ```
 
 ## Validation Rules

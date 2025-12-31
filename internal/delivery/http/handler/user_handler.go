@@ -3,6 +3,7 @@ package handler
 import (
 	"strconv"
 
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/delivery/http/dto"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/usecase"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/response"
@@ -27,23 +28,30 @@ func NewUserHandler(userUseCase *usecase.UserUseCase) *UserHandler {
 // @Accept       json
 // @Produce      json
 // @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
-// @Param        request body usecase.RegisterInput true "Register request"
-// @Success      201  {object}  response.Response{data=domain.User}
+// @Param        request body dto.RegisterRequest true "Register request"
+// @Success      201  {object}  response.Response{data=dto.UserDTO}
 // @Failure      400  {object}  response.Response
 // @Failure      409  {object}  response.Response
 // @Failure      500  {object}  response.Response
 // @Router       /auth/register [post]
 func (h *UserHandler) Register(c *gin.Context) {
-	var input usecase.RegisterInput
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var req dto.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, domain.NewAppError("request.invalid_json"))
 		return
 	}
 
 	// Validate input
-	if errs := validator.ValidateStruct(input); len(errs) > 0 {
+	if errs := validator.ValidateStruct(req); len(errs) > 0 {
 		response.ValidationError(c, errs)
 		return
+	}
+
+	// Map DTO to usecase input
+	input := usecase.RegisterInput{
+		Email:    req.Email,
+		Password: req.Password,
+		Name:     req.Name,
 	}
 
 	user, err := h.userUseCase.Register(c.Request.Context(), input)
@@ -56,7 +64,8 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	response.Created(c, user, "user.created")
+	// Map domain entity to DTO for response
+	response.Created(c, dto.ToUserDTO(user), "user.created")
 }
 
 // Login godoc
@@ -66,23 +75,29 @@ func (h *UserHandler) Register(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
-// @Param        request body usecase.LoginInput true "Login credentials"
-// @Success      200  {object}  response.Response{data=usecase.LoginResponse}
+// @Param        request body dto.LoginRequest true "Login credentials"
+// @Success      200  {object}  response.Response{data=dto.LoginResponse}
 // @Failure      400  {object}  response.Response
 // @Failure      401  {object}  response.Response
 // @Failure      500  {object}  response.Response
 // @Router       /auth/login [post]
 func (h *UserHandler) Login(c *gin.Context) {
-	var input usecase.LoginInput
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var req dto.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, domain.NewAppError("request.invalid_json"))
 		return
 	}
 
 	// Validate input
-	if errs := validator.ValidateStruct(input); len(errs) > 0 {
+	if errs := validator.ValidateStruct(req); len(errs) > 0 {
 		response.ValidationError(c, errs)
 		return
+	}
+
+	// Map DTO to usecase input
+	input := usecase.LoginInput{
+		Email:    req.Email,
+		Password: req.Password,
 	}
 
 	result, err := h.userUseCase.Login(c.Request.Context(), input)
@@ -95,7 +110,14 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, result)
+	// Map usecase result to DTO for response
+	responseDTO := &dto.LoginResponse{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		User:         dto.ToUserDTO(result.User),
+	}
+
+	response.Success(c, responseDTO)
 }
 
 // Logout godoc
@@ -124,14 +146,14 @@ func (h *UserHandler) Logout(c *gin.Context) {
 }
 
 // GetProfile godoc
-// @Summary      Get current user profile
-// @Description  Get authenticated user's profile information
+// @Summary      GetAccessToken current user profile
+// @Description  GetAccessToken authenticated user's profile information
 // @Tags         Users
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
 // @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
-// @Success      200  {object}  response.Response{data=domain.User}
+// @Success      200  {object}  response.Response{data=dto.UserDTO}
 // @Failure      401  {object}  response.Response
 // @Failure      404  {object}  response.Response
 // @Failure      500  {object}  response.Response
@@ -159,19 +181,19 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, user)
+	response.Success(c, dto.ToUserDTO(user))
 }
 
 // GetByID godoc
-// @Summary      Get user by ID
-// @Description  Get user information by user ID
+// @Summary      GetAccessToken user by ID
+// @Description  GetAccessToken user information by user ID
 // @Tags         Users
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
 // @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
 // @Param        id   path      int  true  "User ID"
-// @Success      200  {object}  response.Response{data=domain.User}
+// @Success      200  {object}  response.Response{data=dto.UserDTO}
 // @Failure      400  {object}  response.Response
 // @Failure      401  {object}  response.Response
 // @Failure      404  {object}  response.Response
@@ -195,7 +217,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, user)
+	response.Success(c, dto.ToUserDTO(user))
 }
 
 // RefreshToken godoc
@@ -205,29 +227,26 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
-// @Param        request body object{refresh_token=string} true "Refresh token"
-// @Success      200  {object}  response.Response{data=usecase.LoginResponse}
+// @Param        request body dto.RefreshTokenRequest true "Refresh token"
+// @Success      200  {object}  response.Response{data=dto.LoginResponse}
 // @Failure      400  {object}  response.Response
 // @Failure      401  {object}  response.Response
 // @Failure      500  {object}  response.Response
 // @Router       /auth/refresh [post]
 func (h *UserHandler) RefreshToken(c *gin.Context) {
-	var input struct {
-		RefreshToken string `json:"refresh_token" validate:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var req dto.RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, domain.NewAppError("request.invalid_json"))
 		return
 	}
 
 	// Validate input
-	if errs := validator.ValidateStruct(input); len(errs) > 0 {
+	if errs := validator.ValidateStruct(req); len(errs) > 0 {
 		response.ValidationError(c, errs)
 		return
 	}
 
-	result, err := h.userUseCase.RefreshToken(c.Request.Context(), input.RefreshToken)
+	result, err := h.userUseCase.RefreshToken(c.Request.Context(), req.RefreshToken)
 	if err != nil {
 		if err == domain.ErrInvalidCredentials || err == domain.ErrSessionExpired {
 			response.Unauthorized(c, domain.NewAppError("auth.invalid_refresh_token"))
@@ -237,5 +256,12 @@ func (h *UserHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, result)
+	// Map usecase result to DTO for response
+	responseDTO := &dto.LoginResponse{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		User:         dto.ToUserDTO(result.User),
+	}
+
+	response.Success(c, responseDTO)
 }

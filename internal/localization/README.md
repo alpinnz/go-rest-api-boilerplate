@@ -33,22 +33,35 @@ localization/
 
 ## Error Code Format
 
-Error codes follow dot notation:
+Error codes follow dot notation for clear organization:
 
 ```
-validation.{rule}       # Validation errors (generic)
-fields.{field_name}     # Field labels (human-readable)
-user.{action}           # User domain errors
-auth.{action}           # Authentication errors
-common.{type}           # Common errors
+validation.{field}.{rule}    # Field-specific validation errors
+user.{action}                # User domain errors
+auth.{action}                # Authentication errors
+common.{type}                # Common messages
 ```
+
+### Validation Errors
+
+Pattern: `validation.{field_name}.{rule_name}`
 
 Examples:
-- `validation.required` + field label lookup
-- `validation.min` + field label + params
-- `validation.email` + field label
-- `user.not_found`
-- `auth.invalid_credentials`
+- `validation.email.required` → "Email is required"
+- `validation.email.email` → "Email format is invalid"
+- `validation.password.min` → "Password must be at least {min} characters"
+- `validation.name.required` → "Name is required"
+
+**Parameter Interpolation**: Use `{param_name}` in messages, replaced by validator params.
+
+### Domain Errors
+
+Examples:
+- `user.not_found` → "User not found"
+- `user.email_exists` → "Email already registered"
+- `auth.invalid_credentials` → "Invalid email or password"
+- `auth.invalid_refresh_token` → "Invalid or expired refresh token"
+- `common.error` → "Unexpected error occurred"
 
 ## Usage
 

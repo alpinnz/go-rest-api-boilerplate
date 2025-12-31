@@ -6,15 +6,15 @@ import (
 )
 
 // User represents an authenticated user entity in the system.
-// Password field is never exposed in JSON responses (json:"-" tag).
+// This is a pure domain entity - no JSON tags (serialization is DTO concern).
 type User struct {
-	ID        int64      `json:"id"`
-	Email     string     `json:"email"`
-	Password  string     `json:"-"` // bcrypt hashed password
-	Name      string     `json:"name"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at"` // soft delete timestamp
+	ID        int64
+	Email     string
+	Password  string // bcrypt hashed password
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time // soft delete timestamp
 }
 
 // UserRepository defines data access methods for User entities.
@@ -48,49 +48,4 @@ type UserRepository interface {
 	// Returns ErrNotFound if user does not exist.
 	// Returns error if database operation fails.
 	Delete(ctx context.Context, id int64) error
-}
-
-// Session represents an active user session with access and refresh tokens.
-// Sessions are stored in Redis for fast authentication validation.
-type Session struct {
-	AccessToken  string    // JWT access token (short-lived, used for API requests)
-	RefreshToken string    // JWT refresh token (long-lived, used to get new access token)
-	UserID       int64     // Associated user ID
-	ExpiresAt    time.Time // Access token expiration time
-}
-
-// SessionRepository defines data access methods for Session storage.
-// Implementations use Redis for fast in-memory access with TTL.
-// All methods accept context for cancellation and timeout control.
-type SessionRepository interface {
-	// Set stores a new session in Redis with expiration.
-	// Token is used as key, userID as value.
-	// Expiration determines TTL (time-to-live) in Redis.
-	// Returns error if Redis operation fails.
-	Set(ctx context.Context, token string, userID int64, expiration time.Duration) error
-
-	// Get retrieves userID for a given token from Redis.
-	// Returns ErrSessionExpired if token doesn't exist (expired or invalid).
-	// Returns error if Redis operation fails.
-	Get(ctx context.Context, token string) (int64, error)
-
-	// Delete removes a session from Redis (logout).
-	// Used for immediate session invalidation.
-	// Returns error if Redis operation fails.
-	Delete(ctx context.Context, token string) error
-
-	// SetRefreshToken stores refresh token mapping to access token in Redis.
-	// Used to validate and track refresh token usage.
-	// Returns error if Redis operation fails.
-	SetRefreshToken(ctx context.Context, refreshToken string, accessToken string, expiration time.Duration) error
-
-	// GetByRefreshToken retrieves access token for a given refresh token.
-	// Returns ErrSessionExpired if refresh token doesn't exist or expired.
-	// Returns error if Redis operation fails.
-	GetByRefreshToken(ctx context.Context, refreshToken string) (string, error)
-
-	// DeleteRefreshToken removes refresh token from Redis.
-	// Used when refresh token is used or during logout.
-	// Returns error if Redis operation fails.
-	DeleteRefreshToken(ctx context.Context, refreshToken string) error
 }

@@ -11,7 +11,8 @@ Domain package contains business entities, interfaces, and domain-specific error
 ```
 domain/
 ├── errors.go       Domain-specific errors
-└── user.go         User entity and interface
+├── user.go         User entity and repository interface
+└── session.go      Session repository interface
 ```
 
 ## Domain Errors
@@ -71,14 +72,18 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 
 ### User
 
-User entity represents the user domain model.
+Pure domain entity representing a user in the system.
 
 **Fields:**
 - `ID` - Unique user identifier
 - `Email` - User email address (unique)
-- `Password` - Hashed password
+- `Password` - Hashed password (bcrypt)
+- `Name` - User full name
 - `CreatedAt` - Account creation timestamp
 - `UpdatedAt` - Last update timestamp
+- `DeletedAt` - Soft delete timestamp (nullable)
+
+**Note**: User entity has no JSON tags. Serialization is handled by DTOs in the delivery layer.
 
 **Repository Interface:**
 
