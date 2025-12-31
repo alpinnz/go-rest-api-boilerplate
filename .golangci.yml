@@ -1,0 +1,62 @@
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  govet:
+    enable-all: true
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/alpinnz/go-rest-api-boilerplate
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - unnamedResult
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+        disabled: false
+      - name: error-return
+      - name: error-naming
+      - name: if-return
+      - name: var-naming
+      - name: package-comments
+        disabled: true
+
+linters:
+  enable:
+    - errcheck      # Check error handling
+    - gosimple      # Simplify code
+    - govet         # Go vet checks
+    - ineffassign   # Detect unused assignments
+    - staticcheck   # Static analysis
+    - typecheck     # Type checking
+    - unused        # Detect unused code
+    - gofmt         # Check formatting
+    - goimports     # Check imports
+    - misspell      # Check spelling
+    - gocritic      # Code critic
+    - revive        # Linting
+  disable:
+    - deadcode      # Deprecated
+    - varcheck      # Deprecated
+    - structcheck   # Deprecated
+
+issues:
+  exclude-rules:
+    # Exclude some linters from test files
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gocritic
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+run:
+  timeout: 5m
+  tests: true
+

@@ -1,0 +1,496 @@
+# REST API Response Patterns
+
+This document describes the standardized response structure for all API endpoints.
+
+## Common Response Structure
+
+All responses follow a consistent structure with the following fields:
+
+| Field      | Type            | Description |
+|-----------|-----------------|-------------|
+| code      | string \| null  | Application-level code or error type |
+| message   | string          | Human readable message |
+| data      | any \| null     | Response payload |
+| errors    | object \| null  | Validation or contextual error details |
+| meta      | object \| null  | Metadata (pagination, sorting, etc.) |
+| trace_id  | string \| null  | Optional request trace identifier |
+
+## Design Rules
+
+1. HTTP Status is the primary signal (2xx, 3xx, 4xx, 5xx)
+2. No success boolean field
+3. Validation errors use array of atomic items with code, field, and message
+4. Non-validation errors use contextual object
+5. Do not mix array and object for same error code
+6. trace_id is optional but recommended for logging and debugging
+7. No duplicate (location + field + code) for validation errors
+8. meta is optional, usually for pagination, sorting, or extra info
+
+## 2xx Success Responses
+
+### 200 OK (Single Resource)
+
+```json
+{
+  "code": null,
+  "message": "Success",
+  "data": {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "errors": null,
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.Success(c, user)
+```
+
+### 200 OK (List with Pagination)
+
+```json
+{
+  "code": null,
+  "message": "Success",
+  "data": [
+    {"id": 1, "name": "User 1"},
+    {"id": 2, "name": "User 2"}
+  ],
+  "errors": null,
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "per_page": 10,
+      "total_data": 100,
+      "total_page": 10
+    },
+    "sort": [
+      {"field": "created_at", "order": "desc"},
+      {"field": "id", "order": "asc"}
+    ]
+  },
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+meta := &response.Meta{
+    Pagination: &response.Pagination{
+        Page:      1,
+        PerPage:   10,
+        TotalData: 100,
+        TotalPage: 10,
+    },
+    Sort: []response.Sort{
+        {Field: "created_at", Order: "desc"},
+        {Field: "id", Order: "asc"},
+    },
+}
+response.SuccessWithMeta(c, users, meta)
+```
+
+### 201 Created
+
+```json
+{
+  "code": null,
+  "message": "Resource created successfully",
+  "data": {
+    "id": 1,
+    "name": "New User",
+    "email": "user@example.com"
+  },
+  "errors": null,
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.Created(c, user)
+```
+
+### 204 No Content
+
+```json
+{
+  "code": null,
+  "message": "No Content",
+  "data": null,
+  "errors": null,
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.NoContent(c)
+```
+
+## 3xx Redirection Responses
+
+### 301 Moved Permanently
+
+```json
+{
+  "code": "REDIRECT",
+  "message": "Resource moved permanently",
+  "data": {
+    "location": "/new-url"
+  },
+  "errors": null,
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.Redirect(c, "/new-url")
+```
+
+### 302 Found
+
+```json
+{
+  "code": "REDIRECT",
+  "message": "Resource temporarily moved",
+  "data": {
+    "location": "/temporary-url"
+  },
+  "errors": null,
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.TemporaryRedirect(c, "/temporary-url")
+```
+
+## 4xx Client Errors
+
+### 400 Bad Request (Validation Error)
+
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "Validation failed",
+  "data": null,
+  "errors": {
+    "body": [
+      {
+        "code": "REQUIRED",
+        "field": "email",
+        "message": "Email is required"
+      },
+      {
+        "code": "INVALID_FORMAT",
+        "field": "email",
+        "message": "Email format is invalid"
+      }
+    ],
+    "headers": [],
+    "path": [],
+    "query": []
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+errors := response.ValidationErrors{
+    Body: []response.ValidationItem{
+        {
+            Code:    "REQUIRED",
+            Field:   "email",
+            Message: "Email is required",
+        },
+        {
+            Code:    "INVALID_FORMAT",
+            Field:   "email",
+            Message: "Email format is invalid",
+        },
+    },
+    Headers: []response.ValidationItem{},
+    Path:    []response.ValidationItem{},
+    Query:   []response.ValidationItem{},
+}
+response.ValidationError(c, errors)
+```
+
+### 400 Bad Request (Non-Validation)
+
+```json
+{
+  "code": "INVALID_SORT_FIELD",
+  "message": "Invalid sort field",
+  "data": null,
+  "errors": {
+    "allowed_fields": ["id", "name", "created_at"]
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.BadRequest(c, "INVALID_SORT_FIELD", "Invalid sort field", gin.H{
+    "allowed_fields": []string{"id", "name", "created_at"},
+})
+```
+
+### 401 Unauthorized
+
+```json
+{
+  "code": "UNAUTHORIZED",
+  "message": "Unauthorized",
+  "data": null,
+  "errors": {
+    "reason": "Invalid or expired token"
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.Unauthorized(c, "Invalid or expired token")
+```
+
+### 403 Forbidden
+
+```json
+{
+  "code": "FORBIDDEN",
+  "message": "Access denied",
+  "data": null,
+  "errors": {
+    "permission": "user.read"
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.Forbidden(c, "user.read")
+```
+
+### 404 Not Found
+
+```json
+{
+  "code": "NOT_FOUND",
+  "message": "Resource not found",
+  "data": null,
+  "errors": {
+    "resource": "user"
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.NotFound(c, "user")
+```
+
+### 409 Conflict
+
+```json
+{
+  "code": "CONFLICT",
+  "message": "Resource conflict",
+  "data": null,
+  "errors": {
+    "field": "email",
+    "message": "Email already exists"
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.Conflict(c, "email", "Email already exists")
+```
+
+## 5xx Server Errors
+
+### 500 Internal Server Error
+
+```json
+{
+  "code": "INTERNAL_SERVER_ERROR",
+  "message": "Unexpected error occurred",
+  "data": null,
+  "errors": {
+    "hint": "Check server logs"
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.InternalServerError(c, "Check server logs")
+```
+
+### 502 Bad Gateway
+
+```json
+{
+  "code": "BAD_GATEWAY",
+  "message": "Bad gateway",
+  "data": null,
+  "errors": {
+    "hint": "Upstream service failure"
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.BadGateway(c, "Upstream service failure")
+```
+
+### 503 Service Unavailable
+
+```json
+{
+  "code": "SERVICE_UNAVAILABLE",
+  "message": "Service temporarily unavailable",
+  "data": null,
+  "errors": {
+    "retry_after": 30
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.ServiceUnavailable(c, 30)
+```
+
+### 504 Gateway Timeout
+
+```json
+{
+  "code": "GATEWAY_TIMEOUT",
+  "message": "Gateway timeout",
+  "data": null,
+  "errors": {
+    "hint": "Upstream server timed out"
+  },
+  "meta": null,
+  "trace_id": "8f9c2a"
+}
+```
+
+**Usage:**
+```go
+response.GatewayTimeout(c, "Upstream server timed out")
+```
+
+## Implementation Examples
+
+### Handler with Validation
+
+```go
+func (h *UserHandler) Register(c *gin.Context) {
+    var input RegisterInput
+    if err := c.ShouldBindJSON(&input); err != nil {
+        response.BadRequest(c, "INVALID_INPUT", "Invalid request body", gin.H{
+            "details": err.Error(),
+        })
+        return
+    }
+
+    user, err := h.userUseCase.Register(c.Request.Context(), input)
+    if err != nil {
+        if err == domain.ErrConflict {
+            response.Conflict(c, "email", "Email already exists")
+            return
+        }
+        response.InternalServerError(c, "Failed to register user")
+        return
+    }
+
+    response.Created(c, user)
+}
+```
+
+### Handler with Pagination
+
+```go
+func (h *UserHandler) List(c *gin.Context) {
+    page := c.DefaultQuery("page", "1")
+    perPage := c.DefaultQuery("per_page", "10")
+    
+    users, total, err := h.userUseCase.List(c.Request.Context(), page, perPage)
+    if err != nil {
+        response.InternalServerError(c, "Failed to fetch users")
+        return
+    }
+
+    totalPage := (total + perPage - 1) / perPage
+    meta := &response.Meta{
+        Pagination: &response.Pagination{
+            Page:      page,
+            PerPage:   perPage,
+            TotalData: total,
+            TotalPage: totalPage,
+        },
+    }
+
+    response.SuccessWithMeta(c, users, meta)
+}
+```
+
+### Middleware Authentication
+
+```go
+func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        token := c.GetHeader("Authorization")
+        if token == "" {
+            response.Unauthorized(c, "Authorization header required")
+            c.Abort()
+            return
+        }
+
+        userID, err := m.validateToken(token)
+        if err != nil {
+            response.Unauthorized(c, "Invalid or expired token")
+            c.Abort()
+            return
+        }
+
+        c.Set("userID", userID)
+        c.Next()
+    }
+}
+```
+
