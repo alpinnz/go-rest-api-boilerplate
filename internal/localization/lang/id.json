@@ -1,0 +1,57 @@
+{
+  "common": {
+    "success": "Berhasil",
+    "error": "Terjadi kesalahan",
+    "validation_error": "Validasi gagal"
+  },
+  "fields": {
+    "email": "Email",
+    "password": "Password",
+    "name": "Nama",
+    "first_name": "Nama Depan",
+    "last_name": "Nama Belakang",
+    "phone": "Nomor Telepon",
+    "address": "Alamat",
+    "city": "Kota",
+    "country": "Negara",
+    "postal_code": "Kode Pos"
+  },
+  "validation": {
+    "required": "{field} wajib diisi",
+    "email": "{field} harus berupa alamat email yang valid",
+    "min": "{field} minimal {min} karakter",
+    "max": "{field} maksimal {max} karakter",
+    "len": "{field} harus tepat {len} karakter",
+    "alpha": "{field} hanya boleh berisi huruf",
+    "alphanum": "{field} hanya boleh berisi huruf dan angka",
+    "numeric": "{field} harus berupa angka",
+    "url": "{field} harus berupa URL yang valid",
+    "uuid": "{field} harus berupa UUID yang valid",
+    "gt": "{field} harus lebih besar dari {gt}",
+    "gte": "{field} harus lebih besar atau sama dengan {gte}",
+    "lt": "{field} harus lebih kecil dari {lt}",
+    "lte": "{field} harus lebih kecil atau sama dengan {lte}",
+    "eq": "{field} harus sama dengan {eq}",
+    "ne": "{field} tidak boleh sama dengan {ne}"
+  },
+  "user": {
+    "not_found": "Pengguna tidak ditemukan",
+    "already_exists": "Pengguna dengan email ini sudah terdaftar",
+    "email_exists": "Email sudah terdaftar",
+    "created": "Pengguna berhasil dibuat",
+    "updated": "Pengguna berhasil diperbarui",
+    "deleted": "Pengguna berhasil dihapus"
+  },
+  "auth": {
+    "invalid_credentials": "Email atau password tidak valid",
+    "unauthorized": "Akses tidak diizinkan",
+    "token_expired": "Token telah kedaluwarsa",
+    "token_invalid": "Token tidak valid",
+    "login_success": "Login berhasil",
+    "logout_success": "Logout berhasil"
+  },
+  "request": {
+    "invalid_json": "Format JSON tidak valid"
+  }
+}
+

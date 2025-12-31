@@ -1,88 +1,83 @@
 package validator
 
 import (
-	"errors"
-	"reflect"
-	"regexp"
-	"strings"
+	"fmt"
+
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain"
+	v10 "github.com/go-playground/validator/v10"
 )
 
+var validate = v10.New()
+
+// ValidateStruct validates struct fields using validator tags.
+// Returns slice of AppError with translation keys for localization support.
+// Returns nil if validation passes.
+func ValidateStruct(s any) []domain.AppError {
+	err := validate.Struct(s)
+	if err == nil {
+		return nil
+	}
+
+	verrs, ok := err.(v10.ValidationErrors)
+	if !ok {
+		return []domain.AppError{{Code: "common.error"}}
+	}
+
+	out := make([]domain.AppError, 0, len(verrs))
+	for _, fe := range verrs {
+		field := fe.Field()
+		tag := fe.Tag()
+
+		// Build translation key: validation.{tag}
+		code := fmt.Sprintf("validation.%s", tag)
+
+		params := map[string]string{}
+		if fe.Param() != "" {
+			params[tag] = fe.Param()
+		}
+
+		out = append(out, domain.AppError{
+			Code:   code,
+			Field:  toSnakeLower(field),
+			Params: params,
+		})
+	}
+
+	return out
+}
+
+// toSnakeLower converts PascalCase to snake_case.
+// Example: Email -> email, UserID -> user_id
+func toSnakeLower(in string) string {
+	if in == "" {
+		return ""
+	}
+
+	out := make([]rune, 0, len(in)+4)
+	for i, r := range in {
+		// Add underscore before uppercase (except first char)
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			out = append(out, '_')
+		}
+
+		// Convert to lowercase
+		if r >= 'A' && r <= 'Z' {
+			r = r - 'A' + 'a'
+		}
+
+		out = append(out, r)
+	}
+
+	return string(out)
+}
+
+// Validate is kept for backward compatibility.
+// Use ValidateStruct for new code with localization support.
 func Validate(s interface{}) error {
-	v := reflect.ValueOf(s)
-	t := reflect.TypeOf(s)
-
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldType := t.Field(i)
-		tag := fieldType.Tag.Get("validate")
-
-		if tag == "" {
-			continue
-		}
-
-		rules := strings.Split(tag, ",")
-		for _, rule := range rules {
-			if err := validateRule(field, fieldType.Name, rule); err != nil {
-				return err
-			}
-		}
+	errs := ValidateStruct(s)
+	if len(errs) == 0 {
+		return nil
 	}
-
-	return nil
-}
-
-func validateRule(field reflect.Value, fieldName, rule string) error {
-	parts := strings.Split(rule, "=")
-	ruleName := parts[0]
-
-	switch ruleName {
-	case "required":
-		if isZero(field) {
-			return errors.New(fieldName + " is required")
-		}
-	case "email":
-		if field.Kind() == reflect.String {
-			email := field.String()
-			emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-			if !emailRegex.MatchString(email) {
-				return errors.New(fieldName + " must be a valid email")
-			}
-		}
-	case "min":
-		if len(parts) == 2 {
-			if field.Kind() == reflect.String {
-				if len(field.String()) < parseMinLength(parts[1]) {
-					return errors.New(fieldName + " must be at least " + parts[1] + " characters")
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func isZero(v reflect.Value) bool {
-	switch v.Kind() {
-	case reflect.String:
-		return v.String() == ""
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return v.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return v.Float() == 0
-	case reflect.Bool:
-		return !v.Bool()
-	}
-	return false
-}
-
-func parseMinLength(s string) int {
-	length := 0
-	for _, c := range s {
-		if c >= '0' && c <= '9' {
-			length = length*10 + int(c-'0')
-		}
-	}
-	return length
+	// Return first error for backward compatibility
+	return errs[0]
 }

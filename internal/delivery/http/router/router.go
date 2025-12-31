@@ -1,7 +1,10 @@
 package router
 
 import (
+	"log"
+
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/delivery/http/handler"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/localization"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
@@ -27,11 +30,26 @@ func NewRouter(
 }
 
 func (r *Router) Setup() *gin.Engine {
-	r.engine.Use(middleware.CORS())
+	// Load localization bundles
+	bundle := localization.NewBundle("en")
+	if err := bundle.Load("en", "internal/localization/lang/en.json"); err != nil {
+		log.Printf("Warning: failed to load en.json: %v", err)
+	}
+	if err := bundle.Load("id", "internal/localization/lang/id.json"); err != nil {
+		log.Printf("Warning: failed to load id.json: %v", err)
+	}
+
+	// Global middlewares
 	r.engine.Use(middleware.Logger())
+	r.engine.Use(middleware.Language(bundle))
+	r.engine.Use(middleware.CORS())
 	r.engine.Use(middleware.Recovery())
 
+	// Serve OpenAPI specification
+	r.engine.StaticFile("/docs/swagger.json", "./docs/swagger.json")
+
 	v1 := r.engine.Group("/api/v1")
+
 	{
 		health := v1.Group("/health")
 		{

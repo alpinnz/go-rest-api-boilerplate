@@ -9,6 +9,7 @@ internal/
 ├── delivery/http/       HTTP handlers and routing
 ├── domain/              Business entities and interfaces
 ├── infrastructure/      External service integrations
+├── localization/        Multi-language support
 ├── middleware/          HTTP middleware
 ├── repository/          Data access implementations
 └── usecase/             Business logic orchestration

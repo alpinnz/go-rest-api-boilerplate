@@ -21,6 +21,25 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/auth"
 )
 
+// @title Go REST API Boilerplate
+// @version 1.0
+// @description Production-ready REST API with Clean Architecture, JWT authentication, and multi-language support
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@swagger.io
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token
+
 func main() {
 	cfg, err := config.Load()
 	if err != nil {

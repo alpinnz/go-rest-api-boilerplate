@@ -1,14 +1,14 @@
 # Validator Package
 
-Struct field validation using reflection and custom tags.
+Struct field validation using go-playground/validator/v10.
 
 ## Features
 
+- go-playground/validator/v10 integration
+- 100+ built-in validation rules
 - Tag-based validation
-- Required field validation
-- Email format validation
-- Minimum length validation
-- Extensible rule system
+- Returns error codes for localization
+- Backward compatible API
 
 ## Usage
 
@@ -20,7 +20,7 @@ Define validation rules using struct tags:
 type RegisterInput struct {
     Email    string `json:"email" validate:"required,email"`
     Password string `json:"password" validate:"required,min=8"`
-    Name     string `json:"name" validate:"required"`
+    Name     string `json:"name" validate:"required,min=2"`
 }
 
 func handler(c *gin.Context) {
@@ -29,56 +29,55 @@ func handler(c *gin.Context) {
         return err
     }
     
-    if err := validator.Validate(input); err != nil {
-        return err
+    // New: Returns []domain.AppError for localization
+    errs := validator.ValidateStruct(input)
+    if len(errs) > 0 {
+        // Use with localization
+        response.ValidationErrorI18n(c, dict, errs)
+        return
     }
 }
 ```
 
 ## Validation Rules
 
-### required
+### Common Rules
 
-Validates that field is not empty or zero value:
+- `required` - Field must not be empty
+- `email` - Valid email format
+- `min=N` - Minimum length (string) or value (number)
+- `max=N` - Maximum length (string) or value (number)
+- `len=N` - Exact length
+- `eq=value` - Equal to value
+- `ne=value` - Not equal to value
+- `gt=N` - Greater than
+- `gte=N` - Greater than or equal
+- `lt=N` - Less than
+- `lte=N` - Less than or equal
 
-```go
-type User struct {
-    Email string `validate:"required"`
-    Age   int    `validate:"required"`
-}
-```
+### String Validation
 
-Checks:
-- String: not empty
-- Int: not zero
-- Bool: not false
+- `alpha` - Alphabetic characters only
+- `alphanum` - Alphanumeric characters only
+- `numeric` - Numeric characters only
+- `email` - Valid email address
+- `url` - Valid URL
+- `uri` - Valid URI
+- `uuid` - Valid UUID
+- `uuid3` - Valid UUID v3
+- `uuid4` - Valid UUID v4
+- `uuid5` - Valid UUID v5
 
-### email
+### Number Validation
 
-Validates email format:
-
-```go
-type Input struct {
-    Email string `validate:"required,email"`
-}
-```
-
-Pattern: `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-
-Examples:
-- Valid: `user@example.com`, `test.user@domain.co.uk`
-- Invalid: `invalid`, `@example.com`, `user@.com`
-
-### min
-
-Validates minimum string length:
-
-```go
-type Input struct {
-    Password string `validate:"required,min=8"`
-    Username string `validate:"required,min=3"`
-}
-```
+- `min=N` - Minimum value
+- `max=N` - Maximum value
+- `eq=N` - Equal to value
+- `ne=N` - Not equal to value
+- `gt=N` - Greater than
+- `gte=N` - Greater than or equal
+- `lt=N` - Less than
+- `lte=N` - Less than or equal
 
 ### Multiple Rules
 
@@ -87,102 +86,113 @@ Chain multiple rules with comma:
 ```go
 type Input struct {
     Email    string `validate:"required,email"`
-    Password string `validate:"required,min=8"`
+    Password string `validate:"required,min=8,max=72"`
+    Age      int    `validate:"required,gte=18,lte=120"`
 }
 ```
 
-## Error Messages
+## Error Handling
 
-Validation returns descriptive error messages:
+### With Localization
+
+ValidateStruct returns error codes that can be translated:
+
+```go
+errs := validator.ValidateStruct(input)
+if len(errs) > 0 {
+    // errs[0].Code = "validation.required"
+    // errs[0].Field = "email"
+    // errs[0].Params = map[string]string{}
+    
+    // Translator will:
+    // 1. Lookup "fields.email" -> "Email"
+    // 2. Lookup "validation.required" -> "{field} is required"
+    // 3. Replace {field} with "Email"
+    // 4. Result: "Email is required"
+    
+    dict := middleware.GetDict(c)
+    response.ValidationErrorI18n(c, dict, errs)
+    return
+}
+```
+
+### Backward Compatible
+
+Old Validate function still works:
 
 ```go
 err := validator.Validate(input)
 if err != nil {
-    // Error examples:
-    // "Email is required"
-    // "Email must be a valid email"
-    // "Password must be at least 8 characters"
+    // Returns first error as error interface
+    return err
 }
 ```
 
-## Integration Example
+## Examples
 
-### With Response Package
+### Complete Handler with Localization
 
 ```go
-import (
-    "github.com/alpinnz/go-rest-api-boilerplate/pkg/validator"
-    "github.com/alpinnz/go-rest-api-boilerplate/pkg/response"
-)
-
 func (h *Handler) Register(c *gin.Context) {
+    dict := middleware.GetDict(c)
+    
     var input RegisterInput
     if err := c.ShouldBindJSON(&input); err != nil {
-        response.BadRequest(c, "INVALID_JSON", "Invalid request body", gin.H{
-            "details": err.Error(),
-        })
+        response.BadRequestI18n(c, dict, domain.NewAppError("request.invalid_json"))
         return
     }
     
-    if err := validator.Validate(input); err != nil {
-        errors := response.ValidationErrors{
-            Body: []response.ValidationItem{
-                {
-                    Code:    "VALIDATION_FAILED",
-                    Field:   "unknown",
-                    Message: err.Error(),
-                },
-            },
-        }
-        response.ValidationError(c, errors)
+    errs := validator.ValidateStruct(input)
+    if len(errs) > 0 {
+        response.ValidationErrorI18n(c, dict, errs)
         return
     }
     
     // Process valid input
-}
-```
-
-### Custom Validation
-
-Combine with custom business logic:
-
-```go
-func (h *Handler) CreateUser(c *gin.Context) {
-    var input CreateUserInput
-    
-    if err := c.ShouldBindJSON(&input); err != nil {
-        return handleError(err)
-    }
-    
-    if err := validator.Validate(input); err != nil {
-        return handleError(err)
-    }
-    
-    // Additional custom validation
-    if h.userExists(input.Email) {
-        response.Conflict(c, "email", "Email already exists")
+    user, err := h.userUseCase.Register(c.Request.Context(), input)
+    if err != nil {
+        response.InternalServerErrorI18n(c, dict, domain.NewAppError("common.error"))
         return
     }
+    
+    response.CreatedI18n(c, dict, "user.created", user)
 }
 ```
+
+## Error Code Format
+
+Validation errors are converted to generic error codes with field label lookup:
+
+```
+validation.{rule}
+```
+
+Examples:
+- `validation.required` + field="email" → "Email is required"
+- `validation.min` + field="password" + params={"min":"8"} → "Password must be at least 8 characters"
+- `validation.email` + field="email" → "Email must be a valid email address"
+
+The translator automatically:
+1. Gets field label from `fields.{field_name}` in translation JSON
+2. Injects field label as `{field}` parameter
+3. Replaces all parameters in validation message template
+
+This approach makes translations scalable - add 100 fields without adding 100 translations.
 
 ## Supported Field Types
 
-- `string`: required, email, min
-- `int`, `int8`, `int16`, `int32`, `int64`: required
-- `uint`, `uint8`, `uint16`, `uint32`, `uint64`: required
-- `float32`, `float64`: required
-- `bool`: required
+- String
+- Int, Int8, Int16, Int32, Int64
+- Uint, Uint8, Uint16, Uint32, Uint64
+- Float32, Float64
+- Bool
+- Struct (nested validation)
+- Slice, Array
+- Map
+- Pointer
 
-## Limitations
+## Full Documentation
 
-Current implementation:
-- Basic validation rules only
-- Simple error messages
-- No nested struct validation
-- No custom error message support
-
-For complex validation scenarios, consider using libraries like:
-- `github.com/go-playground/validator/v10`
-- `github.com/asaskevich/govalidator`
+For complete list of validation rules and features, see:
+https://pkg.go.dev/github.com/go-playground/validator/v10
 

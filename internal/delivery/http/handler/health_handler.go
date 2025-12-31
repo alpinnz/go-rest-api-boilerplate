@@ -11,9 +11,14 @@ func NewHealthHandler() *HealthHandler {
 	return &HealthHandler{}
 }
 
+// Check godoc
+// @Summary      Health check
+// @Description  Check if the API is running
+// @Tags         Health
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  response.Response
+// @Router       /health [get]
 func (h *HealthHandler) Check(c *gin.Context) {
-	response.Success(c, gin.H{
-		"status":  "ok",
-		"message": "Service is running",
-	})
+	response.Success(c, true)
 }

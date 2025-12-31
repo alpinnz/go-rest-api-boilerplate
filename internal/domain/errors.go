@@ -2,14 +2,36 @@ package domain
 
 import "errors"
 
-// Domain-specific errors for consistent error handling across layers.
-// These errors should be mapped to appropriate HTTP status codes in handlers.
-//
-// Usage:
-//
-//	if user == nil {
-//	    return ErrNotFound
-//	}
+// AppError represents application error with localization support.
+// Code follows dot notation for translation keys (e.g., "user.not_found", "validation.email.required").
+// Field and Params provide additional context for error messages.
+type AppError struct {
+	Code   string            // Translation key (e.g., "user.not_found")
+	Field  string            // Field name for validation errors
+	Params map[string]string // Parameters for message interpolation (e.g., {"min": "8"})
+}
+
+func (e AppError) Error() string {
+	return e.Code
+}
+
+// NewAppError creates a new AppError with the given code.
+func NewAppError(code string) AppError {
+	return AppError{Code: code}
+}
+
+// NewAppErrorWithField creates AppError with field context.
+func NewAppErrorWithField(code, field string) AppError {
+	return AppError{Code: code, Field: field}
+}
+
+// NewAppErrorWithParams creates AppError with parameters.
+func NewAppErrorWithParams(code string, params map[string]string) AppError {
+	return AppError{Code: code, Params: params}
+}
+
+// Legacy errors for backward compatibility.
+// These will be gradually replaced with AppError.
 var (
 	// ErrNotFound indicates requested resource does not exist.
 	// Maps to HTTP 404 Not Found.

@@ -24,8 +24,15 @@ Production-ready REST API boilerplate built with Go, following Clean Architectur
 - Password hashing (bcrypt)
 - Session invalidation on logout
 - CORS middleware
-- Input validation
+- Input validation with go-playground/validator
 - SQL injection prevention
+
+### Localization
+- Multi-language support (English, Indonesian)
+- Accept-Language header detection
+- Code-based error translation
+- Parameter interpolation
+- Extensible language system
 
 ### Development
 - Hot reload ready
@@ -33,6 +40,7 @@ Production-ready REST API boilerplate built with Go, following Clean Architectur
 - Make commands for all operations
 - Linter configuration (golangci-lint)
 - Environment-based configuration
+- OpenAPI/Swagger JSON auto-generation
 
 ### Production Ready
 - Graceful shutdown
@@ -45,6 +53,7 @@ Production-ready REST API boilerplate built with Go, following Clean Architectur
 
 - **Go 1.21+** - Programming language
 - **Gin** - HTTP web framework
+- **go-playground/validator** - Struct validation
 - **PostgreSQL 15** - Primary database
 - **Redis 7** - Session storage & caching
 - **Docker Compose** - Container orchestration
@@ -68,8 +77,9 @@ make seed
 # 5. Run application
 make run
 
-# 6. Test health endpoint
+# 6. Test endpoints
 curl http://localhost:8080/api/v1/health
+curl http://localhost:8080/docs/swagger.json
 ```
 
 ## Using This Boilerplate
@@ -135,6 +145,7 @@ make lint          # Run linter
 
 ### Public
 - `GET  /api/v1/health` - Health check
+- `GET  /docs/swagger.json` - OpenAPI specification
 - `POST /api/v1/auth/register` - User registration
 - `POST /api/v1/auth/login` - User login
 
@@ -145,9 +156,11 @@ make lint          # Run linter
 
 ## Documentation
 
+- [OpenAPI Specification](docs/README.md) - Auto-generated `swagger.json`
 - [cmd/](cmd/README.md) - Application entry points
 - [internal/](internal/README.md) - Application code
 - [internal/domain/](internal/domain/README.md) - Domain entities and errors
+- [internal/localization/](internal/localization/README.md) - Multi-language support
 - [internal/middleware/](internal/middleware/README.md) - HTTP middleware
 - [pkg/](pkg/README.md) - Public packages
 - [pkg/auth/](pkg/auth/README.md) - Authentication utilities
