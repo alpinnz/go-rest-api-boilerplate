@@ -78,19 +78,9 @@ Before running the application, ensure you have:
 - **Go 1.21+** installed
 - **PostgreSQL** server running (local or cloud)
 - **Redis** server running (local or cloud)
-- **PostgreSQL client (psql)** for migrations:
-  - macOS: `brew install postgresql`
-  - Ubuntu: `sudo apt-get install postgresql-client`
-  - Windows: Download from [postgresql.org](https://www.postgresql.org/download/)
-  - Or use [golang-migrate](https://github.com/golang-migrate/migrate) as alternative
-
 ## Quick Start
 
 ```bash
-# 0. Install PostgreSQL client if not available (for migrations)
-brew install postgresql  # macOS
-# sudo apt-get install postgresql-client  # Ubuntu
-
 # 1. Install development tools (Air for hot reload, Swag, etc.)
 make install-tools
 
@@ -98,7 +88,7 @@ make install-tools
 cp .env.example .env
 # Edit .env with your PostgreSQL and Redis credentials
 
-# 3. Run migrations (requires psql command)
+# 3. Run migrations (requires make install-tools)
 make migrate-up
 
 # 4. Seed database (optional)
