@@ -439,12 +439,13 @@ The API container:
 - Uses environment variables from .env file
 - Connects to external PostgreSQL and Redis
 - Includes all application dependencies
+- Uses golang-migrate for database migrations
 
 Note: Ensure PostgreSQL and Redis are accessible from Docker container (use host.docker.internal on macOS/Windows or adjust DB_HOST/REDIS_HOST).
 
 ## Migrations
 
-Database migrations connect directly to PostgreSQL using .env configuration.
+Database migrations use **golang-migrate** tool and connect directly to PostgreSQL using .env configuration.
 
 ### Commands
 
@@ -460,21 +461,15 @@ make migrate-create NAME=add_user_avatar
 
 # View migration files
 make migrate-status
-
-# Check current migration version
-make 
 ```
 
-### Troubleshooting
+### Requirements
 
-**Error: `psql: command not found`**
+The `make install-tools` command automatically installs golang-migrate:
+- **macOS**: `brew install golang-migrate`
+- **Linux/Windows**: Via Go install
 
-Simply run:
-```bash
-make install-tools
-```
-
-This will automatically install PostgreSQL client along with other development tools.
+No additional PostgreSQL client (psql) is needed.
 
 ### Current Schema
 
