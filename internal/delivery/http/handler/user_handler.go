@@ -9,6 +9,7 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/response"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/validator"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type UserHandler struct {
@@ -21,133 +22,9 @@ func NewUserHandler(userUseCase *usecase.UserUseCase) *UserHandler {
 	}
 }
 
-// Register godoc
-// @Summary      Register new user
-// @Description  Create a new user account
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
-// @Param        request body dto.RegisterRequest true "Register request"
-// @Success      201  {object}  response.Response{data=dto.UserDTO}
-// @Failure      400  {object}  response.Response
-// @Failure      409  {object}  response.Response
-// @Failure      500  {object}  response.Response
-// @Router       /auth/register [post]
-func (h *UserHandler) Register(c *gin.Context) {
-	var req dto.RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, domain.NewAppError("request.invalid_json"))
-		return
-	}
-
-	// Validate input
-	if errs := validator.ValidateStruct(req); len(errs) > 0 {
-		response.ValidationError(c, errs)
-		return
-	}
-
-	// Map DTO to usecase input
-	input := usecase.RegisterInput{
-		Email:    req.Email,
-		Password: req.Password,
-		Name:     req.Name,
-	}
-
-	user, err := h.userUseCase.Register(c.Request.Context(), input)
-	if err != nil {
-		if err == domain.ErrConflict {
-			response.Conflict(c, domain.NewAppError("user.email_exists"))
-			return
-		}
-		response.InternalServerError(c, domain.NewAppError("common.error"))
-		return
-	}
-
-	// Map domain entity to DTO for response
-	response.Created(c, dto.ToUserDTO(user), "user.created")
-}
-
-// Login godoc
-// @Summary      User login
-// @Description  Authenticate user and get JWT token
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
-// @Param        request body dto.LoginRequest true "Login credentials"
-// @Success      200  {object}  response.Response{data=dto.LoginResponse}
-// @Failure      400  {object}  response.Response
-// @Failure      401  {object}  response.Response
-// @Failure      500  {object}  response.Response
-// @Router       /auth/login [post]
-func (h *UserHandler) Login(c *gin.Context) {
-	var req dto.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, domain.NewAppError("request.invalid_json"))
-		return
-	}
-
-	// Validate input
-	if errs := validator.ValidateStruct(req); len(errs) > 0 {
-		response.ValidationError(c, errs)
-		return
-	}
-
-	// Map DTO to usecase input
-	input := usecase.LoginInput{
-		Email:    req.Email,
-		Password: req.Password,
-	}
-
-	result, err := h.userUseCase.Login(c.Request.Context(), input)
-	if err != nil {
-		if err == domain.ErrInvalidCredentials {
-			response.Unauthorized(c, domain.NewAppError("auth.invalid_credentials"))
-			return
-		}
-		response.InternalServerError(c, domain.NewAppError("common.error"))
-		return
-	}
-
-	// Map usecase result to DTO for response
-	responseDTO := &dto.LoginResponse{
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		User:         dto.ToUserDTO(result.User),
-	}
-
-	response.Success(c, responseDTO)
-}
-
-// Logout godoc
-// @Summary      User logout
-// @Description  Logout user and invalidate JWT token
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Success      200  {object}  response.Response
-// @Failure      401  {object}  response.Response
-// @Failure      500  {object}  response.Response
-// @Router       /auth/logout [post]
-func (h *UserHandler) Logout(c *gin.Context) {
-	token := c.GetHeader("Authorization")
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
-	}
-
-	if err := h.userUseCase.Logout(c.Request.Context(), token); err != nil {
-		response.InternalServerError(c, domain.NewAppError("common.error"))
-		return
-	}
-
-	response.Success(c, true)
-}
-
 // GetProfile godoc
-// @Summary      GetAccessToken current user profile
-// @Description  GetAccessToken authenticated user's profile information
+// @Summary      Get current user profile
+// @Description  Get authenticated user's profile information
 // @Tags         Users
 // @Accept       json
 // @Produce      json
@@ -165,7 +42,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	id, ok := userID.(int64)
+	id, ok := userID.(uuid.UUID)
 	if !ok {
 		response.InternalServerError(c, domain.NewAppError("common.error"))
 		return
@@ -185,8 +62,8 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 }
 
 // GetByID godoc
-// @Summary      GetAccessToken user by ID
-// @Description  GetAccessToken user information by user ID
+// @Summary      Get user by ID
+// @Description  Get user information by user ID
 // @Tags         Users
 // @Accept       json
 // @Produce      json
@@ -201,9 +78,9 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 // @Router       /users/{id} [get]
 func (h *UserHandler) GetByID(c *gin.Context) {
 	idParam := c.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+	id, err := uuid.Parse(idParam)
 	if err != nil {
-		response.BadRequest(c, domain.NewAppError("request.invalid_json"))
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
 		return
 	}
 
@@ -220,48 +97,225 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 	response.Success(c, dto.ToUserDTO(user))
 }
 
-// RefreshToken godoc
-// @Summary      Refresh access token
-// @Description  Generate new access token using refresh token
-// @Tags         Authentication
+// List godoc
+// @Summary      List users
+// @Description  Get paginated list of users
+// @Tags         Users
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
-// @Param        request body dto.RefreshTokenRequest true "Refresh token"
-// @Success      200  {object}  response.Response{data=dto.LoginResponse}
-// @Failure      400  {object}  response.Response
+// @Param        limit   query     int     false  "Limit"  default(10)
+// @Param        offset  query     int     false  "Offset" default(0)
+// @Success      200  {object}  response.Response{data=dto.UserListResponse}
 // @Failure      401  {object}  response.Response
 // @Failure      500  {object}  response.Response
-// @Router       /auth/refresh [post]
-func (h *UserHandler) RefreshToken(c *gin.Context) {
-	var req dto.RefreshTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, domain.NewAppError("request.invalid_json"))
+// @Router       /users [get]
+func (h *UserHandler) List(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	input := usecase.ListUsersInput{
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	result, err := h.userUseCase.List(c.Request.Context(), input)
+	if err != nil {
+		response.InternalServerError(c, domain.NewAppError("common.error"))
 		return
 	}
 
-	// Validate input
+	responseDTO := dto.ToUserListResponse(result.Users, result.Total, result.Limit, result.Offset, result.HasMore)
+	response.Success(c, responseDTO)
+}
+
+// Update godoc
+// @Summary      Update user
+// @Description  Update user information
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        id   path      int  true  "User ID"
+// @Param        request body dto.UpdateUserRequest true "Update user request"
+// @Success      200  {object}  response.Response{data=dto.UserDTO}
+// @Failure      400  {object}  response.Response
+// @Failure      401  {object}  response.Response
+// @Failure      404  {object}  response.Response
+// @Failure      409  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /users/{id} [put]
+func (h *UserHandler) Update(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
+	var req dto.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
 	if errs := validator.ValidateStruct(req); len(errs) > 0 {
 		response.ValidationError(c, errs)
 		return
 	}
 
-	result, err := h.userUseCase.RefreshToken(c.Request.Context(), req.RefreshToken)
+	input := usecase.UpdateUserInput{
+		Email:     req.Email,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+	}
+
+	user, err := h.userUseCase.Update(c.Request.Context(), id, input)
 	if err != nil {
-		if err == domain.ErrInvalidCredentials || err == domain.ErrSessionExpired {
-			response.Unauthorized(c, domain.NewAppError("auth.invalid_refresh_token"))
+		if err == domain.ErrNotFound {
+			response.NotFound(c, domain.NewAppError("user.not_found"))
+			return
+		}
+		if err == domain.ErrConflict {
+			response.Conflict(c, domain.NewAppError("user.email_exists"))
 			return
 		}
 		response.InternalServerError(c, domain.NewAppError("common.error"))
 		return
 	}
 
-	// Map usecase result to DTO for response
-	responseDTO := &dto.LoginResponse{
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		User:         dto.ToUserDTO(result.User),
+	response.Success(c, dto.ToUserDTO(user))
+}
+
+// Delete godoc
+// @Summary      Delete user
+// @Description  Delete user by ID
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        id   path      int  true  "User ID"
+// @Success      200  {object}  response.Response
+// @Failure      400  {object}  response.Response
+// @Failure      401  {object}  response.Response
+// @Failure      404  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /users/{id} [delete]
+func (h *UserHandler) Delete(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
 	}
 
-	response.Success(c, responseDTO)
+	if err := h.userUseCase.Delete(c.Request.Context(), id); err != nil {
+		if err == domain.ErrNotFound {
+			response.NotFound(c, domain.NewAppError("user.not_found"))
+			return
+		}
+		response.InternalServerError(c, domain.NewAppError("common.error"))
+		return
+	}
+
+	response.Success(c, true)
+}
+
+// AssignRole godoc
+// @Summary      Assign role to user
+// @Description  Assign a role to a user
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        id   path      int  true  "User ID"
+// @Param        request body dto.AssignRoleRequest true "Assign role request"
+// @Success      200  {object}  response.Response
+// @Failure      400  {object}  response.Response
+// @Failure      401  {object}  response.Response
+// @Failure      404  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /users/{id}/roles [post]
+func (h *UserHandler) AssignRole(c *gin.Context) {
+	idParam := c.Param("id")
+	userID, err := uuid.Parse(idParam)
+	if err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
+	var req dto.AssignRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
+	if errs := validator.ValidateStruct(req); len(errs) > 0 {
+		response.ValidationError(c, errs)
+		return
+	}
+
+	roleID, err := uuid.Parse(req.RoleID)
+	if err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
+	if err := h.userUseCase.AssignRole(c.Request.Context(), userID, roleID); err != nil {
+		if err == domain.ErrNotFound {
+			response.NotFound(c, domain.NewAppError("user.not_found"))
+			return
+		}
+		response.InternalServerError(c, domain.NewAppError("common.error"))
+		return
+	}
+
+	response.Success(c, true)
+}
+
+// RemoveRole godoc
+// @Summary      Remove role from user
+// @Description  Remove a role from a user
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        id   path      int  true  "User ID"
+// @Param        roleId path    int  true  "Role ID"
+// @Success      200  {object}  response.Response
+// @Failure      400  {object}  response.Response
+// @Failure      401  {object}  response.Response
+// @Failure      404  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /users/{id}/roles/{roleId} [delete]
+func (h *UserHandler) RemoveRole(c *gin.Context) {
+	idParam := c.Param("id")
+	userID, err := uuid.Parse(idParam)
+	if err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
+	roleIDParam := c.Param("roleId")
+	roleID, err := uuid.Parse(roleIDParam)
+	if err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
+	if err := h.userUseCase.RemoveRole(c.Request.Context(), userID, roleID); err != nil {
+		if err == domain.ErrNotFound {
+			response.NotFound(c, domain.NewAppError("user.not_found"))
+			return
+		}
+		response.InternalServerError(c, domain.NewAppError("common.error"))
+		return
+	}
+
+	response.Success(c, true)
 }

@@ -1,8 +1,10 @@
-package domain
+package repository
 
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // SessionRepository defines data access methods for Session storage.
@@ -13,12 +15,12 @@ type SessionRepository interface {
 	// Token is used as key, userID as value.
 	// Expiration determines TTL (time-to-live) in Redis.
 	// Returns error if Redis operation fails.
-	SetAccessToken(ctx context.Context, token string, userID int64, expiration time.Duration) error
+	SetAccessToken(ctx context.Context, token string, userID uuid.UUID, expiration time.Duration) error
 
 	// GetAccessToken retrieves userID for a given token from Redis.
 	// Returns ErrSessionExpired if token doesn't exist (expired or invalid).
 	// Returns error if Redis operation fails.
-	GetAccessToken(ctx context.Context, token string) (int64, error)
+	GetAccessToken(ctx context.Context, token string) (uuid.UUID, error)
 
 	// DeleteAccessToken removes a session from Redis (logout).
 	// Used for immediate session invalidation.

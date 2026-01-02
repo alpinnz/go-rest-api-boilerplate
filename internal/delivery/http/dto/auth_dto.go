@@ -1,12 +1,13 @@
 package dto
 
-import "github.com/alpinnz/go-rest-api-boilerplate/internal/domain"
+import "github.com/alpinnz/go-rest-api-boilerplate/internal/domain/entity"
 
 // RegisterRequest represents user registration request from HTTP
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-	Name     string `json:"name" validate:"required,min=2"`
+	Email     string `json:"email" validate:"required,email"`
+	Password  string `json:"password" validate:"required,min=8"`
+	FirstName string `json:"first_name" validate:"required,min=2"`
+	LastName  string `json:"last_name" validate:"required,min=2"`
 }
 
 // LoginRequest represents user login request from HTTP
@@ -29,22 +30,26 @@ type LoginResponse struct {
 
 // UserDTO represents user data in HTTP responses
 type UserDTO struct {
-	ID        int64  `json:"id"`
+	ID        string `json:"id"`
 	Email     string `json:"email"`
-	Name      string `json:"name"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	FullName  string `json:"full_name"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
 
-// ToUserDTO converts domain.User to UserDTO for HTTP response
-func ToUserDTO(user *domain.User) *UserDTO {
+// ToUserDTO converts model.User to UserDTO for HTTP response
+func ToUserDTO(user *entity.User) *UserDTO {
 	if user == nil {
 		return nil
 	}
 	return &UserDTO{
-		ID:        user.ID,
+		ID:        user.ID.String(),
 		Email:     user.Email,
-		Name:      user.Name,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		FullName:  user.FullName(),
 		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt: user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}

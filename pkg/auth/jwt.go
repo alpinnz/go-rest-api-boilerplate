@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 // Token types
@@ -28,7 +29,7 @@ var jwtSecret = []byte("change-this-secret-key")
 // Claims represents JWT token claims including user identity and token type.
 // Embeds jwt.RegisteredClaims for standard claims (exp, iat, etc.).
 type Claims struct {
-	UserID    int64  `json:"user_id"`    // Authenticated user's unique identifier
+	UserID    string `json:"user_id"`    // Authenticated user's unique identifier (UUID string)
 	TokenType string `json:"token_type"` // Token type: "access" or "refresh"
 	jwt.RegisteredClaims
 }
@@ -51,31 +52,31 @@ func SetJWTSecret(secret string) {
 //
 // Example:
 //
-//	token, err := auth.GenerateToken(12345)
+//	token, err := auth.GenerateToken(userID)
 //	if err != nil {
 //	    return err
 //	}
 //	// Use token in Authorization header: Bearer <token>
-func GenerateToken(userID int64) (string, error) {
+func GenerateToken(userID uuid.UUID) (string, error) {
 	return generateTokenWithType(userID, TokenTypeAccess, AccessTokenExpiration)
 }
 
 // GenerateAccessToken creates a new JWT access token (short-lived).
 // Token expires after 15 minutes.
-func GenerateAccessToken(userID int64) (string, error) {
+func GenerateAccessToken(userID uuid.UUID) (string, error) {
 	return generateTokenWithType(userID, TokenTypeAccess, AccessTokenExpiration)
 }
 
 // GenerateRefreshToken creates a new JWT refresh token (long-lived).
 // Token expires after 7 days.
-func GenerateRefreshToken(userID int64) (string, error) {
+func GenerateRefreshToken(userID uuid.UUID) (string, error) {
 	return generateTokenWithType(userID, TokenTypeRefresh, RefreshTokenExpiration)
 }
 
 // generateTokenWithType creates a JWT token with specified type and expiration.
-func generateTokenWithType(userID int64, tokenType string, expiration time.Duration) (string, error) {
+func generateTokenWithType(userID uuid.UUID, tokenType string, expiration time.Duration) (string, error) {
 	claims := Claims{
-		UserID:    userID,
+		UserID:    userID.String(),
 		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiration)),

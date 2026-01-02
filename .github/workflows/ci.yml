@@ -51,7 +51,7 @@ jobs:
         DB_HOST: localhost
         DB_PORT: 5432
         DB_USER: postgres
-        DB_PASSWORD: postgres
+        DB_PASS: postgres
         DB_NAME: go-rest-api-boilerplate_test
         JWT_SECRET: test-secret-key
 

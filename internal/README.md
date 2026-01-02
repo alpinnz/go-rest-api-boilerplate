@@ -1,652 +1,319 @@
-# internal/
+# Internal Package
 
-Application-specific code following Clean Architecture principles.
+Application-specific code following Clean Architecture, SOLID principles, and Domain-Driven Design (DDD).
 
-## Directory Structure
+## Structure
 
 ```
 internal/
-├── delivery/http/       HTTP handlers and routing
-│   ├── dto/            Data Transfer Objects
-│   ├── handler/        HTTP handlers
-│   └── router/         Route definitions
-├── domain/              Business entities and interfaces
-├── infrastructure/      External service integrations
-├── localization/        Multi-language support
-├── middleware/          HTTP middleware
-├── repository/          Data access implementations
-└── usecase/             Business logic orchestration
+├── domain/              Core business domain
+│   ├── entity/         Domain entities (User, Role)
+│   ├── repository/     Repository interfaces (contracts)
+│   └── errors.go       Domain errors
+├── repository/          Repository implementations
+├── usecase/            Business logic orchestration
+├── delivery/http/      HTTP layer (handlers, DTOs, router)
+├── middleware/         HTTP middleware
+├── localization/       Multi-language support
+└── infrastructure/     External services (PostgreSQL, Redis)
 ```
 
-## Architecture Overview
+## Design Principles
 
-This boilerplate follows Clean Architecture with clear separation of concerns:
+### Domain-Driven Design (DDD)
 
+Entity: Objects with identity (ID), mutable, has lifecycle
+- Examples: User, Role
+- Location: `domain/entity/`
+
+Repository Pattern:
+- Interface in domain layer (contract): `domain/repository/`
+- Implementation in infrastructure layer: `repository/`
+
+### SOLID Principles
+
+Single Responsibility:
+- Entity: Domain data and behavior
+- Repository Interface: Data access contract
+- Repository Implementation: Data access logic
+- UseCase: Business logic orchestration
+- Handler: HTTP request/response handling
+
+Dependency Inversion:
+- UseCase depends on Repository interface (abstraction)
+- Not on concrete implementation
+- Easy to mock for testing
+
+### Clean Architecture
+
+Dependency Rule:
 ```
-┌─────────────────────────────────────────────┐
-│           Delivery Layer (HTTP)             │
-│  - Handlers                                 │
-│  - Routing                                  │
-│  - Request/Response mapping                 │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│          Middleware Layer                   │
-│  - Authentication                           │
-│  - CORS, Logging, Recovery                  │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│           Usecase Layer                     │
-│  - Business logic orchestration             │
-│  - Application services                     │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│            Domain Layer                     │
-│  - Entities                                 │
-│  - Repository interfaces                    │
-│  - Domain errors                            │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│         Repository Layer                    │
-│  - Database implementations                 │
-│  - Cache implementations                    │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│       Infrastructure Layer                  │
-│  - Database connections                     │
-│  - External services                        │
-└─────────────────────────────────────────────┘
+HTTP Handler → UseCase → Domain Entity
+     ↓            ↓            ↑
+    DTO      Repository   Repository
+                Interface   Implementation
 ```
 
-## Packages
+Dependencies flow inward. Domain layer has no dependencies.
 
-### delivery/http/
+## Layers
 
-HTTP layer for handling requests and responses.
+### Domain Layer (`domain/`)
 
-**Structure:**
-```
-delivery/http/
-├── dto/        Data Transfer Objects (JSON serialization)
-├── handler/    Request handlers
-└── router/     Route definitions
-```
+Core business logic. No dependencies on external frameworks.
 
-**Responsibilities:**
-- Parse HTTP requests
-- Validate request format (via DTOs)
-- Map DTOs to usecase inputs
-- Call usecase layer
-- Map usecase outputs to DTOs
-- Format HTTP responses
-
-**DTO Pattern:**
-- DTOs contain JSON and validation tags
-- Handlers map between DTOs and domain entities
-- Separation between HTTP format and business logic
-
-### domain/
-
-Core business entities and domain logic.
-
-**Files:**
-- `user.go` - User entity and repository interface
-- `errors.go` - Domain-specific errors
-
-**Characteristics:**
-- No external dependencies
-- Pure business logic
-- Technology-agnostic
-
-[View detailed documentation](./domain/README.md)
-
-### infrastructure/
-
-External service integrations and connections.
-
-**Structure:**
-```
-infrastructure/
-└── database/
-    ├── postgres.go    PostgreSQL connection
-    └── redis.go       Redis connection
-```
-
-**Responsibilities:**
-- Database connections
-- External service clients
-- Infrastructure configuration
-
-### middleware/
-
-HTTP middleware for cross-cutting concerns.
-
-**Files:**
-- `auth.go` - JWT authentication
-- `cors.go` - CORS headers
-- `logger.go` - Request logging
-- `recovery.go` - Panic recovery
-
-[View detailed documentation](./middleware/README.md)
-
-### repository/
-
-Data access layer implementations.
-
-**Files:**
-- `user_repository.go` - User database operations
-- `session_repository.go` - Session cache operations
-
-**Responsibilities:**
-- Implement domain repository interfaces
-- Execute database queries
-- Handle data persistence
-
-### usecase/
-
-Business logic orchestration.
-
-**Files:**
-- `user_usecase.go` - User business operations
-
-**Responsibilities:**
-- Orchestrate business workflows
-- Coordinate repositories
-- Apply business rules
-- Transaction management
-
-## Dependency Flow
-
-Dependencies flow inward following Clean Architecture:
-
-```
-delivery → middleware → usecase → domain ← repository ← infrastructure
-```
-
-Rules:
-1. Inner layers cannot depend on outer layers
-2. Domain is the innermost layer (no dependencies)
-3. Infrastructure is the outermost layer
-4. Dependencies point inward through interfaces
-
-## Example: User Registration Flow
-
-```
-1. HTTP Request
-   ↓
-2. Handler (delivery/http/handler/user_handler.go)
-   - Parse JSON
-   - Validate format
-   ↓
-3. Middleware (middleware/auth.go)
-   - Optional authentication check
-   ↓
-4. Usecase (usecase/user_usecase.go)
-   - Hash password
-   - Check duplicate email
-   - Create user
-   - Generate token
-   ↓
-5. Repository (repository/user_repository.go)
-   - Insert into database
-   ↓
-6. Infrastructure (infrastructure/database/postgres.go)
-   - Execute SQL query
-   ↓
-7. HTTP Response
-   - Return user and token
-```
-
-## Package Guidelines
-
-### domain/
-
+entity/:
 ```go
-// Define entities
+// entity/user.go - Domain entity with behavior
 type User struct {
-    ID    int64
-    Email string
+    ID        uuid.UUID  // UUIDv7 for time-ordered IDs
+    FirstName string
+    LastName  string
+    Email     string
+    Password  string
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    DeletedAt *time.Time
+    Roles     []*Role
 }
 
-// Define interfaces
-type UserRepository interface {
-    Create(ctx context.Context, user *User) error
+func (u *User) FullName() string {
+    return u.FirstName + " " + u.LastName
 }
 
-// Define errors
-var ErrNotFound = errors.New("resource not found")
+func (u *User) IsDeleted() bool {
+    return u.DeletedAt != nil
+}
 ```
 
-### usecase/
+repository/:
+```go
+// repository/user_repository.go - Interface contract
+type UserRepository interface {
+    Create(ctx context.Context, user *entity.User) error
+    FindByID(ctx context.Context, id uuid.UUID) (*entity.User, error)
+    FindByEmail(ctx context.Context, email string) (*entity.User, error)
+    Update(ctx context.Context, user *entity.User) error
+    Delete(ctx context.Context, id uuid.UUID) error
+}
+```
+
+### Repository Layer (`repository/`)
+
+Data access implementations.
 
 ```go
-// Depend on domain interfaces
+type userRepository struct {
+    db *sql.DB
+}
+
+func (r *userRepository) FindByID(ctx context.Context, id int64) (*entity.User, error) {
+    // SQL implementation
+    // Auto exclude soft-deleted: WHERE deleted_at IS NULL
+}
+```
+
+### UseCase Layer (`usecase/`)
+
+Business logic orchestration. Coordinates between repositories and external services.
+
+```go
 type UserUseCase struct {
     userRepo domain.UserRepository
+    roleRepo domain.RoleRepository
 }
 
-// Implement business logic
-func (uc *UserUseCase) Register(ctx context.Context, input RegisterInput) error {
-    // Business logic here
-}
-```
-
-### repository/
-
-```go
-// Implement domain interface
-type userRepository struct {
-    db *sql.DB
-}
-
-func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
-    // Database operation
-}
-```
-
-### delivery/
-
-```go
-// Handle HTTP requests
-func (h *UserHandler) Register(c *gin.Context) {
-    var input RegisterInput
-    if err := c.ShouldBindJSON(&input); err != nil {
-        response.BadRequest(c, "INVALID_INPUT", "Invalid request", nil)
-        return
-    }
-    
-    result, err := h.userUseCase.Register(c.Request.Context(), input)
-    if err != nil {
-        // Handle error
-        return
-    }
-    
-    response.Created(c, result)
-}
-```
-
-## Testing Strategy
-
-### Unit Tests
-
-Test each layer independently using mocks:
-
-```go
-// Test usecase with mock repositories
-func TestUserUseCase_Register(t *testing.T) {
-    mockRepo := new(MockUserRepository)
-    usecase := NewUserUseCase(mockRepo)
-    
-    mockRepo.On("Create", mock.Anything).Return(nil)
-    
-    err := usecase.Register(ctx, input)
-    assert.NoError(t, err)
-}
-```
-
-### Integration Tests
-
-Test repository implementations with real databases:
-
-```go
-// Test repository with test database
-func TestUserRepository_Create(t *testing.T) {
-    db := setupTestDB(t)
-    defer db.Close()
-    
-    repo := NewUserRepository(db)
-    user := &domain.User{Email: "test@example.com"}
-    
-    err := repo.Create(context.Background(), user)
-    assert.NoError(t, err)
-    assert.NotZero(t, user.ID)
-}
-```
-
-### Handler Tests
-
-Test HTTP endpoints with mock usecases:
-
-```go
-// Test handler with mock usecase
-func TestUserHandler_Register(t *testing.T) {
-    gin.SetMode(gin.TestMode)
-    
-    mockUseCase := new(MockUserUseCase)
-    handler := NewUserHandler(mockUseCase)
-    
-    router := gin.New()
-    router.POST("/register", handler.Register)
-    
-    w := httptest.NewRecorder()
-    req, _ := http.NewRequest("POST", "/register", body)
-    router.ServeHTTP(w, req)
-    
-    assert.Equal(t, 201, w.Code)
-}
-```
-
-## Data Flow Examples
-
-### User Registration Flow
-
-```
-1. HTTP POST /api/v1/register
-   {
-     "email": "user@example.com",
-     "password": "password123",
-     "name": "John Doe"
-   }
-   ↓
-2. Handler (delivery/http/handler/user_handler.go)
-   - Parse JSON body
-   - Validate request format
-   ↓
-3. Usecase (usecase/user_usecase.go)
-   - Check email uniqueness
-   - Hash password with bcrypt
-   - Create user entity
-   ↓
-4. Repository (repository/user_repository.go)
-   - Insert user into PostgreSQL
-   - Return created user with ID
-   ↓
-5. Response
-   201 Created
-   {
-     "code": null,
-     "message": "Resource created successfully",
-     "data": {
-       "id": 1,
-       "email": "user@example.com",
-       "name": "John Doe",
-       "created_at": "2025-12-31T10:00:00Z"
-     }
-   }
-```
-
-### User Login Flow
-
-```
-1. HTTP POST /api/v1/login
-   {
-     "email": "user@example.com",
-     "password": "password123"
-   }
-   ↓
-2. Handler (delivery/http/handler/user_handler.go)
-   - Parse JSON body
-   - Validate request format
-   ↓
-3. Usecase (usecase/user_usecase.go)
-   - Get user by email from repository
-   - Verify password with bcrypt
-   - Generate JWT token
-   - Store session in Redis
-   ↓
-4. Repository
-   - User Repository: Get user from PostgreSQL
-   - Session Repository: Store token in Redis
-   ↓
-5. Response
-   200 OK
-   {
-     "code": null,
-     "message": "Success",
-     "data": {
-       "user": {...},
-       "token": "eyJhbGciOiJIUzI1NiIs..."
-     }
-   }
-```
-
-### Protected Request Flow
-
-```
-1. HTTP GET /api/v1/profile
-   Headers:
-     Authorization: Bearer <token>
-   ↓
-2. Auth Middleware (middleware/auth.go)
-   - Extract token from header
-   - Validate Bearer format
-   ↓
-3. Usecase (usecase/user_usecase.go)
-   - Validate JWT signature
-   - Check session in Redis
-   - Extract user ID from token
-   ↓
-4. Repository (repository/session_repository.go)
-   - Get session from Redis
-   - Verify token exists and not expired
-   ↓
-5. Handler (delivery/http/handler/user_handler.go)
-   - Get userID from context
-   - Fetch user profile
-   ↓
-6. Response
-   200 OK
-   {
-     "code": null,
-     "message": "Success",
-     "data": {
-       "id": 1,
-       "email": "user@example.com",
-       "name": "John Doe"
-     }
-   }
-```
-
-## Design Decisions
-
-### Repository Organization by Domain
-
-Repositories are organized by business entity, not by technology:
-
-```
-repository/
-├── user_repository.go      # User domain (PostgreSQL)
-└── session_repository.go   # Session domain (Redis)
-
-NOT:
-repository/
-├── postgres/
-│   └── user_repository.go
-└── redis/
-    └── session_repository.go
-```
-
-**Benefits:**
-- Single repository can use multiple data sources
-- Clean Architecture compliance
-- Domain-driven design alignment
-- Easier to test with mocks
-- Infrastructure layer is reusable
-
-### Infrastructure Layer Separation
-
-Database connections are separated into infrastructure layer:
-
-```go
-// Infrastructure provides connections
-db := infrastructure.NewPostgresDB(config)
-redis := infrastructure.NewRedisClient(config)
-
-// Repositories use those connections
-userRepo := repository.NewUserRepository(db)
-sessionRepo := repository.NewSessionRepository(redis)
-```
-
-**Benefits:**
-- Single source of truth for connections
-- Reusable across multiple repositories
-- Easy to switch database technology
-- Clear separation of concerns
-- Simplified testing
-
-### Redis-Only Sessions
-
-Sessions stored only in Redis, not in PostgreSQL:
-
-**Rationale:**
-- Fast in-memory access
-- Built-in TTL (time-to-live)
-- Automatic expiration
-- Simpler architecture
-- Horizontal scaling
-- No cleanup jobs needed
-
-**When to add SQL sessions:**
-- Compliance requires audit trail
-- Need session history analytics
-- Multi-device session management
-- Admin session revocation
-
-### Error Handling
-
-Domain errors for consistent error handling:
-
-```go
-// Domain layer defines errors
-var ErrNotFound = errors.New("resource not found")
-var ErrConflict = errors.New("resource already exists")
-
-// Repository returns domain errors
-if err == sql.ErrNoRows {
-    return nil, domain.ErrNotFound
-}
-
-// Handler maps to HTTP responses
-if err == domain.ErrNotFound {
-    response.NotFound(c, "user")
-}
-```
-
-**Benefits:**
-- Consistent error handling
-- Technology-agnostic
-- Easy to test
-- Clear error mapping
-
-## References
-
-- [Clean Architecture by Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-- [Domain-Driven Design](https://martinfowler.com/bliki/DomainDrivenDesign.html)
-- [Repository Pattern](https://martinfowler.com/eaaCatalog/repository.html)
-
-### Example
-
-```go
-type userRepository struct {
-    db *sql.DB
-}
-
-func NewUserRepository(db *sql.DB) domain.UserRepository {
-    return &userRepository{db: db}
-}
-
-func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
-    // Execute SQL INSERT
-}
-```
-
-## delivery/http/
-
-HTTP layer (handlers, routes, middleware).
-
-### Structure
-
-```
-delivery/http/
-├── handler/          Request handlers
-├── router/           Route definitions
-└── middleware/       HTTP middlewares
-```
-
-### handler/
-
-HTTP request handlers.
-
-**Files:**
-- `user_handler.go` - User endpoints
-- `health_handler.go` - Health check
-
-**Responsibilities:**
-- Parse HTTP request
-- Validate input
-- Call use case
-- Format response
-
-### router/
-
-Route configuration.
-
-**Files:**
-- `router.go` - Route setup
-
-**Responsibilities:**
-- Register routes
-- Apply middlewares
-- Group endpoints
-
-### middleware/
-
-HTTP middlewares.
-
-**Files:**
-- `auth.go` - JWT authentication
-- `cors.go` - CORS configuration
-- `logger.go` - Request logging
-- `recovery.go` - Panic recovery
-
-## infrastructure/
-
-External service connections.
-
-### Structure
-
-```
-infrastructure/
-└── database/         Database connections
-```
-
-### Characteristics
-
-- Manages connections
-- Reusable across layers
-- Configuration-driven
-- Error handling
-
-### Files
-
-- `postgres.go` - PostgreSQL connection
-- `redis.go` - Redis client
-
-### Example
-
-```go
-// NewPostgresDB creates PostgreSQL connection
-func NewPostgresDB(dsn string) (*sql.DB, error) {
-    db, err := sql.Open("postgres", dsn)
+func (uc *UserUseCase) GetUser(ctx context.Context, id int64) (*entity.User, error) {
+    user, err := uc.userRepo.FindByID(ctx, id)
     if err != nil {
         return nil, err
     }
     
-    // Configure connection pool
-    db.SetMaxOpenConns(25)
-    db.SetMaxIdleConns(25)
-    db.SetConnMaxLifetime(5 * time.Minute)
+    // Load user roles
+    roles, _ := uc.roleRepo.FindByUserID(ctx, user.ID)
+    user.Roles = roles
     
-    return db, nil
+    return user, nil
 }
 ```
 
+### Delivery Layer (`delivery/http/`)
+
+HTTP request/response handling.
+
+Structure:
+```
+delivery/http/
+├── dto/        Data Transfer Objects
+├── handler/    HTTP handlers
+└── router/     Route definitions
+```
+
+Flow:
+1. Handler receives HTTP request
+2. Parse and validate via DTO
+3. Map DTO to UseCase input
+4. Call UseCase
+5. Map UseCase output to DTO
+6. Return HTTP response
+
+### Middleware Layer (`middleware/`)
+
+HTTP middleware for cross-cutting concerns:
+- auth.go - JWT authentication
+- cors.go - CORS configuration
+- language.go - Language detection
+- logger.go - Request logging
+- recovery.go - Panic recovery
+
+### Infrastructure Layer (`infrastructure/`)
+
+External service connections:
+- database/postgres.go - PostgreSQL connection
+- database/redis.go - Redis connection
+
+### Localization Layer (`localization/`)
+
+Multi-language support:
+- Language detection from Accept-Language header
+- Translation files in `lang/` directory
+- Parameter interpolation
+
+## Adding New Feature
+
+1. Define entity in `domain/entity/`
+2. Define repository interface in `domain/repository/`
+3. Implement repository in `repository/`
+4. Create use case in `usecase/`
+5. Add DTO in `delivery/http/dto/`
+6. Create handler in `delivery/http/handler/`
+7. Register route in `delivery/http/router/`
+
+## Example: Adding New Feature
+
+Let's add a "Post" feature:
+
+Step 1: Define entity (`domain/entity/post.go`):
+```go
+type Post struct {
+    ID        int64
+    UserID    int64
+    Title     string
+    Content   string
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    DeletedAt *time.Time
+}
+
+func (p *Post) IsDeleted() bool {
+    return p.DeletedAt != nil
+}
+```
+
+Step 2: Define repository interface (`domain/repository/post_repository.go`):
+```go
+type PostRepository interface {
+    Create(ctx context.Context, post *entity.Post) error
+    FindByID(ctx context.Context, id int64) (*entity.Post, error)
+    FindByUserID(ctx context.Context, userID int64) ([]*entity.Post, error)
+    Update(ctx context.Context, post *entity.Post) error
+    Delete(ctx context.Context, id int64) error
+}
+```
+
+Step 3: Implement repository (`repository/post_repository.go`):
+```go
+type postRepository struct {
+    db *sql.DB
+}
+
+func NewPostRepository(db *sql.DB) domain.PostRepository {
+    return &postRepository{db: db}
+}
+
+func (r *postRepository) FindByID(ctx context.Context, id int64) (*entity.Post, error) {
+    // Implementation with WHERE deleted_at IS NULL
+}
+```
+
+Step 4: Create use case (`usecase/post_usecase.go`):
+```go
+type PostUseCase struct {
+    postRepo domain.PostRepository
+    userRepo domain.UserRepository
+}
+
+func NewPostUseCase(postRepo domain.PostRepository, userRepo domain.UserRepository) *PostUseCase {
+    return &PostUseCase{
+        postRepo: postRepo,
+        userRepo: userRepo,
+    }
+}
+
+func (uc *PostUseCase) GetPost(ctx context.Context, id int64) (*entity.Post, error) {
+    return uc.postRepo.FindByID(ctx, id)
+}
+```
+
+Step 5: Add DTO (`delivery/http/dto/post_dto.go`):
+```go
+type CreatePostRequest struct {
+    Title   string `json:"title" binding:"required,min=3,max=200"`
+    Content string `json:"content" binding:"required,min=10"`
+}
+
+type PostResponse struct {
+    ID        string `json:"id"`        // UUID as string
+    Title     string `json:"title"`
+    Content   string `json:"content"`
+    CreatedAt string `json:"created_at"`
+}
+```
+
+Step 6: Create handler (`delivery/http/handler/post_handler.go`):
+```go
+type PostHandler struct {
+    postUseCase *usecase.PostUseCase
+}
+
+func NewPostHandler(postUseCase *usecase.PostUseCase) *PostHandler {
+    return &PostHandler{postUseCase: postUseCase}
+}
+
+func (h *PostHandler) GetPost(c *gin.Context) {
+    // Implementation
+}
+```
+
+Step 7: Register route (`delivery/http/router/router.go`):
+```go
+posts := v1.Group("/posts")
+posts.Use(middleware.Auth())
+{
+    posts.GET("/:id", postHandler.GetPost)
+    posts.POST("", postHandler.CreatePost)
+    posts.PUT("/:id", postHandler.UpdatePost)
+    posts.DELETE("/:id", postHandler.DeletePost)
+}
+```
+
+## Best Practices
+
+1. Keep domain layer independent of frameworks
+2. Use interfaces for repository contracts
+3. Implement repository in separate layer
+4. Business logic goes in use cases
+5. Handlers only handle HTTP concerns
+6. Use DTOs for API input/output
+7. Always handle errors explicitly
+8. Use context for cancellation and timeout
+9. Implement soft delete for data preservation
+10. Document all exported functions
+
 ## References
 
-- [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-- [Go Project Layout](https://github.com/golang-standards/project-layout)
+- Clean Architecture by Robert C. Martin
+- Domain-Driven Design by Eric Evans
+- SOLID Principles
+- Go Project Layout: https://github.com/golang-standards/project-layout
 

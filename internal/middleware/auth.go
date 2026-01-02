@@ -9,12 +9,12 @@ import (
 )
 
 type AuthMiddleware struct {
-	userUseCase *usecase.UserUseCase
+	authUseCase *usecase.AuthUseCase
 }
 
-func NewAuthMiddleware(userUseCase *usecase.UserUseCase) *AuthMiddleware {
+func NewAuthMiddleware(authUseCase *usecase.AuthUseCase) *AuthMiddleware {
 	return &AuthMiddleware{
-		userUseCase: userUseCase,
+		authUseCase: authUseCase,
 	}
 }
 
@@ -35,7 +35,7 @@ func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 		}
 
 		token := parts[1]
-		userID, err := m.userUseCase.ValidateSession(c.Request.Context(), token)
+		userID, err := m.authUseCase.ValidateSession(c.Request.Context(), token)
 		if err != nil {
 			response.Unauthorized(c, "Invalid or expired token")
 			c.Abort()

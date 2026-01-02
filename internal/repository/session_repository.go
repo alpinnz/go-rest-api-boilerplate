@@ -3,10 +3,11 @@ package repository
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain/repository"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -14,28 +15,28 @@ type sessionRepository struct {
 	client *redis.Client
 }
 
-func NewSessionRepository(client *redis.Client) domain.SessionRepository {
+func NewSessionRepository(client *redis.Client) repository.SessionRepository {
 	return &sessionRepository{client: client}
 }
 
-func (r *sessionRepository) SetAccessToken(ctx context.Context, token string, userID int64, expiration time.Duration) error {
+func (r *sessionRepository) SetAccessToken(ctx context.Context, token string, userID uuid.UUID, expiration time.Duration) error {
 	key := fmt.Sprintf("session:%s", token)
-	return r.client.Set(ctx, key, userID, expiration).Err()
+	return r.client.Set(ctx, key, userID.String(), expiration).Err()
 }
 
-func (r *sessionRepository) GetAccessToken(ctx context.Context, token string) (int64, error) {
+func (r *sessionRepository) GetAccessToken(ctx context.Context, token string) (uuid.UUID, error) {
 	key := fmt.Sprintf("session:%s", token)
 	val, err := r.client.Get(ctx, key).Result()
 	if err == redis.Nil {
-		return 0, domain.ErrSessionExpired
+		return uuid.Nil, domain.ErrSessionExpired
 	}
 	if err != nil {
-		return 0, err
+		return uuid.Nil, err
 	}
 
-	userID, err := strconv.ParseInt(val, 10, 64)
+	userID, err := uuid.Parse(val)
 	if err != nil {
-		return 0, err
+		return uuid.Nil, err
 	}
 
 	return userID, nil

@@ -42,6 +42,13 @@
     "updated": "Pengguna berhasil diperbarui",
     "deleted": "Pengguna berhasil dihapus"
   },
+  "role": {
+    "not_found": "Role tidak ditemukan",
+    "name_exists": "Role dengan nama ini sudah ada",
+    "created": "Role berhasil dibuat",
+    "updated": "Role berhasil diperbarui",
+    "deleted": "Role berhasil dihapus"
+  },
   "auth": {
     "invalid_credentials": "Email atau password tidak valid",
     "invalid_refresh_token": "Refresh token tidak valid atau kadaluarsa",

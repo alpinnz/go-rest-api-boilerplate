@@ -61,20 +61,33 @@ func main() {
 	defer redisClient.Close()
 
 	userRepo := repository.NewUserRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
 	sessionRepo := repository.NewSessionRepository(redisClient)
 
-	userUseCase := usecase.NewUserUseCase(
+	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
 		sessionRepo,
-		cfg.JWT.Expiration,
 		10*time.Second,
 	)
 
-	userHandler := handler.NewUserHandler(userUseCase)
-	healthHandler := handler.NewHealthHandler()
-	authMiddleware := middleware.NewAuthMiddleware(userUseCase)
+	userUseCase := usecase.NewUserUseCase(
+		userRepo,
+		roleRepo,
+		10*time.Second,
+	)
 
-	r := router.NewRouter(userHandler, healthHandler, authMiddleware)
+	roleUseCase := usecase.NewRoleUseCase(
+		roleRepo,
+		10*time.Second,
+	)
+
+	authHandler := handler.NewAuthHandler(authUseCase)
+	userHandler := handler.NewUserHandler(userUseCase)
+	roleHandler := handler.NewRoleHandler(roleUseCase)
+	healthHandler := handler.NewHealthHandler()
+	authMiddleware := middleware.NewAuthMiddleware(authUseCase)
+
+	r := router.NewRouter(authHandler, userHandler, roleHandler, healthHandler, authMiddleware)
 	engine := r.Setup()
 
 	srv := &http.Server{
