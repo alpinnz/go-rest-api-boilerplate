@@ -50,3 +50,5 @@ logs/
 # Air live reload
 tmp/
 
+# Generated API documentation
+internal/delivery/http/docs/swagger.json

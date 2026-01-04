@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/alpinnz/go-rest-api-boilerplate/cmd/cli/commands/generator"
-	"github.com/alpinnz/go-rest-api-boilerplate/templates"
+	"github.com/alpinnz/go-rest-api-boilerplate/cmd/cli/commands/generator/templates"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +40,7 @@ var genHandlerCmd = &cobra.Command{
 		fmt.Printf("\nNext steps:\n")
 		fmt.Printf("1. Implement handler methods in %s\n", dst)
 		fmt.Printf("2. Register routes in internal/delivery/http/router/router.go\n")
-		fmt.Printf("3. Run: app test\n")
+		fmt.Printf("3. Run: make test\n")
 	},
 }
 
@@ -90,7 +90,7 @@ var genRepositoryCmd = &cobra.Command{
 		fmt.Printf("\nNext steps:\n")
 		fmt.Printf("1. Implement repository methods in %s\n", dstImpl)
 		fmt.Printf("2. Add custom query methods if needed\n")
-		fmt.Printf("3. Run: app test\n")
+		fmt.Printf("3. Run: make test\n")
 	},
 }
 
@@ -127,7 +127,7 @@ var genServiceCmd = &cobra.Command{
 		fmt.Printf("\nNext steps:\n")
 		fmt.Printf("1. Implement business logic in %s\n", dst)
 		fmt.Printf("2. Add validation rules\n")
-		fmt.Printf("3. Run: app test\n")
+		fmt.Printf("3. Run: make test\n")
 	},
 }
 
@@ -200,13 +200,13 @@ var genModuleCmd = &cobra.Command{
 
 		fmt.Printf("\n✓ Module %s generated successfully!\n\n", config.Name)
 		fmt.Printf("Next steps:\n")
-		fmt.Printf("1. Generate migration: app gen migration create_table_%s\n", config.NamePlural)
+		fmt.Printf("1. Generate migration: make gen-migration create_table_%s\n", config.NamePlural)
 		fmt.Printf("2. Customize entity fields\n")
 		fmt.Printf("3. Implement business logic\n")
 		fmt.Printf("4. Register routes in router.go\n")
 		fmt.Printf("5. Initialize in cmd/api/main.go\n")
-		fmt.Printf("6. Run: app migrate up\n")
-		fmt.Printf("7. Test: app test\n")
+		fmt.Printf("6. Run: make migrate-up\n")
+		fmt.Printf("7. Test: make test\n")
 	},
 }
 
@@ -247,7 +247,7 @@ var genMigrationCmd = &cobra.Command{
 		fmt.Printf("\nNext steps:\n")
 		fmt.Printf("1. Edit %s to add your schema\n", upFile)
 		fmt.Printf("2. Edit %s to add rollback logic\n", downFile)
-		fmt.Printf("3. Run: app migrate up\n")
+		fmt.Printf("3. Run: make migrate-up\n")
 	},
 }
 

@@ -137,6 +137,9 @@ cmd/
   api/              Application entry point
   seeder/           Database seeder
   cli/              CLI tool (accessed via Makefile)
+    commands/       CLI commands
+      generator/    Code generator utilities
+        templates/  Code generation templates
 config/             Configuration management
 internal/
   domain/
@@ -154,7 +157,6 @@ pkg/                Public reusable packages
   response/         HTTP response formatting
   validator/        Struct validation
 migrations/         SQL migration files
-docs/               API documentation (OpenAPI/Swagger)
 ```
 
 Design Decisions:

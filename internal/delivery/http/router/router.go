@@ -55,9 +55,9 @@ func (r *Router) Setup() *gin.Engine {
 	r.engine.Use(middleware.Timeout(30 * time.Second)) // 30 second timeout
 
 	// Serve OpenAPI specification
-	r.engine.StaticFile("/docs/swagger.json", "./docs/swagger.json")
-	r.engine.StaticFile("/docs", "./docs/swagger.html")
-	r.engine.StaticFile("/docs/", "./docs/swagger.html")
+	r.engine.StaticFile("/docs/swagger.json", "./internal/delivery/http/docs/swagger.json")
+	r.engine.StaticFile("/docs", "./internal/delivery/http/docs/swagger.html")
+	r.engine.StaticFile("/docs/", "./internal/delivery/http/docs/swagger.html")
 
 	v1 := r.engine.Group("/api/v1")
 

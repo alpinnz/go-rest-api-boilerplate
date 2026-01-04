@@ -24,21 +24,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Sanitize middleware for XSS protection (applied globally)
   - Timeout middleware with 30-second timeout (applied globally)
   - Rate limiter middleware for brute force protection (10 req/min on auth endpoints)
+ - Code generator templates moved to cmd/cli/commands/generator/templates/
+- Documentation for generator package and templates
+- Swagger API documentation in internal/delivery/http/docs/
 
 ### Changed
-- Primary interface now uses Makefile task runner
+- Primary interface now uses Makefile task runner (no direct CLI binary usage)
 - All commands simplified: `make dev`, `make test`, `make gen-module product`
 - Updated GitHub Actions CI/CD workflow to use Makefile
 - Simplified Quick Start guide with Makefile commands
-- Consolidated documentation structure
+- Consolidated documentation structure (7 markdown files total)
 - Response package now uses pagination.Meta to avoid redundancy
+- Templates folder moved from root to cmd/cli/commands/generator/templates/
+- Swagger docs moved from root docs/ to internal/delivery/http/docs/
+- All CLI output messages use `make` commands instead of `app` binary
+- Import path for templates updated to cmd/cli/commands/generator/templates
 
 ### Removed
-- Redundant documentation files
+- Redundant documentation files (cmd/cli/README.md)
 - Duplicate workflow guides
 - RBAC middleware (redundant - role checking done at handler level)
 - Metrics handler and middleware (unused, not implemented)
 - Redundant Pagination struct from response package
+- App binary from root directory (now uses go run via Makefile)
+- Templates folder from root level (moved to generator package)
+- Docs folder from root level (moved to internal/delivery/http/docs/)
+- All emojis from markdown documentation
 
 ## [1.0.0] - 2026-01-04
 
@@ -227,10 +238,10 @@ db, err := database.NewPostgresDB(cfg.Database.DSN(), poolConfig)
 
 #### 4. Install New Tools
 
-Run the updated install-tools command to get Mockery:
+Run the updated install command to get Mockery:
 
 ```bash
-./app install tools
+make install
 ```
 
 #### 5. Optional: Generate Mocks
@@ -238,12 +249,12 @@ Run the updated install-tools command to get Mockery:
 If you want to use mocks for testing:
 
 ```bash
-./app mocks
+make mocks
 ```
 
 #### 6. Optional: Use Templates
 
-Check out the new templates in the `templates/` directory for rapid feature development.
+Check out the new templates in the `cmd/cli/commands/generator/templates/` directory for rapid feature development.
 
 ---
 
@@ -292,12 +303,11 @@ Thank you to all contributors who helped make this boilerplate better!
 
 ## Support
 
-- **Issues**: https://github.com/yourusername/go-rest-api-boilerplate/issues
-- **Discussions**: https://github.com/yourusername/go-rest-api-boilerplate/discussions
-- **Email**: support@yourdomain.com
+- **Issues**: https://github.com/alpinnz/go-rest-api-boilerplate/issues
+- **Discussions**: https://github.com/alpinnz/go-rest-api-boilerplate/discussions
 
 ---
 
-[Unreleased]: https://github.com/yourusername/go-rest-api-boilerplate/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/yourusername/go-rest-api-boilerplate/releases/tag/v1.0.0
+[Unreleased]: https://github.com/alpinnz/go-rest-api-boilerplate/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/alpinnz/go-rest-api-boilerplate/releases/tag/v1.0.0
 
