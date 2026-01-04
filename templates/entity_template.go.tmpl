@@ -1,0 +1,30 @@
+//go:build ignore
+// +build ignore
+
+package entity
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// PLACEHOLDER_Entity represents a PLACEHOLDER_entity entity in the domain
+type PLACEHOLDER_Entity struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	// Add your entity fields here
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+}
+
+// TableName returns the table name for the entity
+func (PLACEHOLDER_Entity) TableName() string {
+	return "PLACEHOLDER_entities"
+}
+
+// IsDeleted checks if the entity is soft deleted
+func (e *PLACEHOLDER_Entity) IsDeleted() bool {
+	return e.DeletedAt != nil
+}

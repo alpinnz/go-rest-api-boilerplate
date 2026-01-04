@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: '1.24'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build binaries
+        run: |
+          # Linux AMD64
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/api-linux-amd64 cmd/api/main.go
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/seeder-linux-amd64 cmd/seeder/main.go
+          
+          # Linux ARM64
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/api-linux-arm64 cmd/api/main.go
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/seeder-linux-arm64 cmd/seeder/main.go
+          
+          # macOS AMD64
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/api-darwin-amd64 cmd/api/main.go
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/seeder-darwin-amd64 cmd/seeder/main.go
+          
+          # macOS ARM64
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/api-darwin-arm64 cmd/api/main.go
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/seeder-darwin-arm64 cmd/seeder/main.go
+          
+          # Windows AMD64
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/api-windows-amd64.exe cmd/api/main.go
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/seeder-windows-amd64.exe cmd/seeder/main.go
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+

@@ -1,0 +1,154 @@
+//go:build ignore
+// +build ignore
+
+package usecase
+
+import (
+	"context"
+	"time"
+
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain/entity"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain/repository"
+	"github.com/google/uuid"
+)
+
+type PLACEHOLDER_EntityUseCase struct {
+	PLACEHOLDER_entityRepo repository.PLACEHOLDER_EntityRepository
+	contextTimeout         time.Duration
+}
+
+func NewPLACEHOLDER_EntityUseCase(
+	PLACEHOLDER_entityRepo repository.PLACEHOLDER_EntityRepository,
+	timeout time.Duration,
+) *PLACEHOLDER_EntityUseCase {
+	return &PLACEHOLDER_EntityUseCase{
+		PLACEHOLDER_entityRepo: PLACEHOLDER_entityRepo,
+		contextTimeout:         timeout,
+	}
+}
+
+// CreatePLACEHOLDER_EntityInput represents input for creating PLACEHOLDER_entity
+type CreatePLACEHOLDER_EntityInput struct {
+	Name string
+	// Add your input fields here
+}
+
+// UpdatePLACEHOLDER_EntityInput represents input for updating PLACEHOLDER_entity
+type UpdatePLACEHOLDER_EntityInput struct {
+	Name string
+	// Add your input fields here
+}
+
+// ListPLACEHOLDER_EntityInput represents input for listing PLACEHOLDER_entities with pagination
+type ListPLACEHOLDER_EntityInput struct {
+	Limit  int
+	Offset int
+}
+
+// ListPLACEHOLDER_EntityResult represents paginated PLACEHOLDER_entities result
+type ListPLACEHOLDER_EntityResult struct {
+	PLACEHOLDER_Entitys []*entity.PLACEHOLDER_Entity
+	Total               int64
+	Limit               int
+	Offset              int
+	HasMore             bool
+}
+
+func (uc *PLACEHOLDER_EntityUseCase) Create(ctx context.Context, input CreatePLACEHOLDER_EntityInput) (*entity.PLACEHOLDER_Entity, error) {
+	ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout)
+	defer cancel()
+
+	if input.Name == "" {
+		return nil, domain.ErrInvalidInput
+	}
+
+	PLACEHOLDER_entity := &entity.PLACEHOLDER_Entity{
+		Name: input.Name,
+		// Set your fields here
+	}
+
+	if err := uc.PLACEHOLDER_entityRepo.Create(ctx, PLACEHOLDER_entity); err != nil {
+		return nil, err
+	}
+
+	return PLACEHOLDER_entity, nil
+}
+
+func (uc *PLACEHOLDER_EntityUseCase) GetByID(ctx context.Context, id uuid.UUID) (*entity.PLACEHOLDER_Entity, error) {
+	ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout)
+	defer cancel()
+
+	PLACEHOLDER_entity, err := uc.PLACEHOLDER_entityRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, domain.ErrNotFound
+	}
+
+	return PLACEHOLDER_entity, nil
+}
+
+func (uc *PLACEHOLDER_EntityUseCase) List(ctx context.Context, input ListPLACEHOLDER_EntityInput) (*ListPLACEHOLDER_EntityResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout)
+	defer cancel()
+
+	if input.Limit <= 0 {
+		input.Limit = 10
+	}
+	if input.Offset < 0 {
+		input.Offset = 0
+	}
+
+	PLACEHOLDER_entities, err := uc.PLACEHOLDER_entityRepo.FindAll(ctx, input.Limit, input.Offset)
+	if err != nil {
+		return nil, err
+	}
+
+	total, err := uc.PLACEHOLDER_entityRepo.Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	hasMore := int64(input.Offset+input.Limit) < total
+
+	return &ListPLACEHOLDER_EntityResult{
+		PLACEHOLDER_Entitys: PLACEHOLDER_entities,
+		Total:               total,
+		Limit:               input.Limit,
+		Offset:              input.Offset,
+		HasMore:             hasMore,
+	}, nil
+}
+
+func (uc *PLACEHOLDER_EntityUseCase) Update(ctx context.Context, id uuid.UUID, input UpdatePLACEHOLDER_EntityInput) (*entity.PLACEHOLDER_Entity, error) {
+	ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout)
+	defer cancel()
+
+	if input.Name == "" {
+		return nil, domain.ErrInvalidInput
+	}
+
+	PLACEHOLDER_entity, err := uc.PLACEHOLDER_entityRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, domain.ErrNotFound
+	}
+
+	PLACEHOLDER_entity.Name = input.Name
+	// Update your fields here
+
+	if err := uc.PLACEHOLDER_entityRepo.Update(ctx, PLACEHOLDER_entity); err != nil {
+		return nil, err
+	}
+
+	return PLACEHOLDER_entity, nil
+}
+
+func (uc *PLACEHOLDER_EntityUseCase) Delete(ctx context.Context, id uuid.UUID) error {
+	ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout)
+	defer cancel()
+
+	if err := uc.PLACEHOLDER_entityRepo.Delete(ctx, id); err != nil {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}

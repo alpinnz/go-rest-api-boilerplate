@@ -1,0 +1,221 @@
+//go:build ignore
+// +build ignore
+
+package handler
+
+import (
+	"strconv"
+
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/delivery/http/dto"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/usecase"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/response"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/validator"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+type PLACEHOLDER_EntityHandler struct {
+	PLACEHOLDER_entityUseCase *usecase.PLACEHOLDER_EntityUseCase
+}
+
+func NewPLACEHOLDER_EntityHandler(PLACEHOLDER_entityUseCase *usecase.PLACEHOLDER_EntityUseCase) *PLACEHOLDER_EntityHandler {
+	return &PLACEHOLDER_EntityHandler{
+		PLACEHOLDER_entityUseCase: PLACEHOLDER_entityUseCase,
+	}
+}
+
+// Create godoc
+// @Summary      Create PLACEHOLDER_entity
+// @Description  Create a new PLACEHOLDER_entity
+// @Tags         PLACEHOLDER_Entity
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        request body dto.CreatePLACEHOLDER_EntityRequest true "Create PLACEHOLDER_entity request"
+// @Success      201  {object}  response.Response{data=dto.PLACEHOLDER_EntityDTO}
+// @Failure      400  {object}  response.Response
+// @Failure      401  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /PLACEHOLDER_entities [post]
+func (h *PLACEHOLDER_EntityHandler) Create(c *gin.Context) {
+	var req dto.CreatePLACEHOLDER_EntityRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		validationErrs := validator.TranslateError(err)
+		response.ValidationError(c, validationErrs)
+		return
+	}
+
+	input := usecase.CreatePLACEHOLDER_EntityInput{
+		Name: req.Name,
+	}
+
+	PLACEHOLDER_entity, err := h.PLACEHOLDER_entityUseCase.Create(c.Request.Context(), input)
+	if err != nil {
+		if err == domain.ErrInvalidInput {
+			response.BadRequest(c, domain.NewAppError("request.invalid_input"))
+			return
+		}
+		response.InternalServerError(c, domain.NewAppError("common.error"))
+		return
+	}
+
+	response.Created(c, dto.ToPLACEHOLDER_EntityDTO(PLACEHOLDER_entity))
+}
+
+// GetByID godoc
+// @Summary      Get PLACEHOLDER_entity by ID
+// @Description  Get PLACEHOLDER_entity information by ID
+// @Tags         PLACEHOLDER_Entity
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        id   path      string  true  "PLACEHOLDER_Entity ID (UUID)"
+// @Success      200  {object}  response.Response{data=dto.PLACEHOLDER_EntityDTO}
+// @Failure      400  {object}  response.Response
+// @Failure      401  {object}  response.Response
+// @Failure      404  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /PLACEHOLDER_entities/{id} [get]
+func (h *PLACEHOLDER_EntityHandler) GetByID(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
+	PLACEHOLDER_entity, err := h.PLACEHOLDER_entityUseCase.GetByID(c.Request.Context(), id)
+	if err != nil {
+		if err == domain.ErrNotFound {
+			response.NotFound(c, domain.NewAppError("PLACEHOLDER_entity.not_found"))
+			return
+		}
+		response.InternalServerError(c, domain.NewAppError("common.error"))
+		return
+	}
+
+	response.Success(c, dto.ToPLACEHOLDER_EntityDTO(PLACEHOLDER_entity))
+}
+
+// List godoc
+// @Summary      List PLACEHOLDER_entities
+// @Description  Get paginated list of PLACEHOLDER_entities
+// @Tags         PLACEHOLDER_Entity
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        limit   query     int     false  "Limit"  default(10)
+// @Param        offset  query     int     false  "Offset" default(0)
+// @Success      200  {object}  response.Response{data=dto.PLACEHOLDER_EntityListResponse}
+// @Failure      401  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /PLACEHOLDER_entities [get]
+func (h *PLACEHOLDER_EntityHandler) List(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	input := usecase.ListPLACEHOLDER_EntityInput{
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	result, err := h.PLACEHOLDER_entityUseCase.List(c.Request.Context(), input)
+	if err != nil {
+		response.InternalServerError(c, domain.NewAppError("common.error"))
+		return
+	}
+
+	responseDTO := dto.ToPLACEHOLDER_EntityListResponse(result.PLACEHOLDER_Entitys, result.Total, result.Limit, result.Offset, result.HasMore)
+	response.Success(c, responseDTO)
+}
+
+// Update godoc
+// @Summary      Update PLACEHOLDER_entity
+// @Description  Update PLACEHOLDER_entity information
+// @Tags         PLACEHOLDER_Entity
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        id   path      string  true  "PLACEHOLDER_Entity ID (UUID)"
+// @Param        request body dto.UpdatePLACEHOLDER_EntityRequest true "Update PLACEHOLDER_entity request"
+// @Success      200  {object}  response.Response{data=dto.PLACEHOLDER_EntityDTO}
+// @Failure      400  {object}  response.Response
+// @Failure      401  {object}  response.Response
+// @Failure      404  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /PLACEHOLDER_entities/{id} [put]
+func (h *PLACEHOLDER_EntityHandler) Update(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
+	var req dto.UpdatePLACEHOLDER_EntityRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		validationErrs := validator.TranslateError(err)
+		response.ValidationError(c, validationErrs)
+		return
+	}
+
+	input := usecase.UpdatePLACEHOLDER_EntityInput{
+		Name: req.Name,
+	}
+
+	PLACEHOLDER_entity, err := h.PLACEHOLDER_entityUseCase.Update(c.Request.Context(), id, input)
+	if err != nil {
+		if err == domain.ErrNotFound {
+			response.NotFound(c, domain.NewAppError("PLACEHOLDER_entity.not_found"))
+			return
+		}
+		if err == domain.ErrInvalidInput {
+			response.BadRequest(c, domain.NewAppError("request.invalid_input"))
+			return
+		}
+		response.InternalServerError(c, domain.NewAppError("common.error"))
+		return
+	}
+
+	response.Success(c, dto.ToPLACEHOLDER_EntityDTO(PLACEHOLDER_entity))
+}
+
+// Delete godoc
+// @Summary      Delete PLACEHOLDER_entity
+// @Description  Soft delete PLACEHOLDER_entity
+// @Tags         PLACEHOLDER_Entity
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Accept-Language  header  string  false  "Language preference (en, id)"  default(en)
+// @Param        id   path      string  true  "PLACEHOLDER_Entity ID (UUID)"
+// @Success      200  {object}  response.Response
+// @Failure      400  {object}  response.Response
+// @Failure      401  {object}  response.Response
+// @Failure      404  {object}  response.Response
+// @Failure      500  {object}  response.Response
+// @Router       /PLACEHOLDER_entities/{id} [delete]
+func (h *PLACEHOLDER_EntityHandler) Delete(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		response.BadRequest(c, domain.NewAppError("request.invalid_id"))
+		return
+	}
+
+	if err := h.PLACEHOLDER_entityUseCase.Delete(c.Request.Context(), id); err != nil {
+		if err == domain.ErrNotFound {
+			response.NotFound(c, domain.NewAppError("PLACEHOLDER_entity.not_found"))
+			return
+		}
+		response.InternalServerError(c, domain.NewAppError("common.error"))
+		return
+	}
+
+	response.Success(c, gin.H{"message": "PLACEHOLDER_entity deleted successfully"})
+}

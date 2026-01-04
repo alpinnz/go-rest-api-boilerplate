@@ -1,247 +1,214 @@
-.PHONY: help run dev build build-seeder test test-coverage clean all docker-up docker-down docker-rebuild docker-logs docker-status migrate-up migrate-down migrate-create migrate-status migrate-force seed lint fmt vet swagger-generate install-tools
+.PHONY: help cli gen dev run build test lint fmt vet mocks migrate seed docker install
 
-help:
-	@echo "Available commands:"
-	@echo ""
-	@echo "Development:"
-	@echo "  make dev              - Run with hot reload (recommended)"
-	@echo "  make run              - Run application"
-	@echo "  make build            - Build API binary"
-	@echo "  make build-seeder     - Build seeder binary"
-	@echo "  make test             - Run tests"
-	@echo "  make test-coverage    - Run tests with coverage report"
-	@echo "  make clean            - Clean build artifacts"
-	@echo "  make all              - Run fmt, vet, lint, test, and build"
-	@echo ""
-	@echo "Docker:"
-	@echo "  make docker-up        - Start API Docker container"
-	@echo "  make docker-down      - Stop API Docker container"
-	@echo "  make docker-rebuild   - Rebuild and restart API container"
-	@echo "  make docker-logs      - Show API container logs"
-	@echo "  make docker-status    - Show API Docker container status"
-	@echo ""
-	@echo "Database:"
-	@echo "  make migrate-up       - Run database migrations"
-	@echo "  make migrate-down     - Rollback database migrations"
-	@echo "  make migrate-create NAME=name - Create new migration"
-	@echo "  make migrate-status   - Show migration files"
-	@echo "  make seed             - Run database seeder"
-	@echo ""
-	@echo "Code Quality:"
-	@echo "  make fmt              - Format code"
-	@echo "  make vet              - Run go vet"
-	@echo "  make lint             - Run linter"
-	@echo "  make swagger-generate - Generate OpenAPI specification"
-	@echo ""
-	@echo "Tools:"
-	@echo "  make install-tools    - Install all development tools"
+# Default target
+.DEFAULT_GOAL := help
 
-dev:
-	@echo "Starting application with hot reload..."
-	@which air > /dev/null || (echo "Air not installed. Run 'make install-tools' first." && exit 1)
-	@air
+# Colors for output
+BLUE := \033[0;34m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+NC := \033[0m # No Color
 
-run:
-	@echo "Starting application..."
-	@go run cmd/api/main.go
-
-# Default target - run full pipeline
-all: fmt vet lint test build
+help: ## Show this help message
+	@echo "$(BLUE)Go REST API Boilerplate - Task Runner$(NC)"
 	@echo ""
-	@echo "✓ All checks passed!"
-
-install-tools:
-	@echo "Installing development tools..."
+	@echo "$(GREEN)Usage:$(NC)"
+	@echo "  make $(YELLOW)<target>$(NC)"
 	@echo ""
-	@echo "1. Installing Air (hot reload)..."
-	@go install github.com/air-verse/air@latest
-	@echo "2. Installing Swag (OpenAPI generator)..."
-	@go install github.com/swaggo/swag/cmd/swag@latest
-	@echo "3. Installing golangci-lint..."
-	@which golangci-lint > /dev/null || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin
-	@echo "4. Installing golang-migrate..."
-	@if command -v brew > /dev/null 2>&1; then \
-		brew list golang-migrate > /dev/null 2>&1 || brew install golang-migrate; \
-	else \
-		go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest; \
-	fi
-	@echo ""
-	@echo "✓ All tools installed successfully!"
-	@echo "Run 'make dev' to start development with hot reload"
+	@echo "$(GREEN)Available targets:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
 
-build:
-	@echo "Building API..."
+# ============================================================================
+# CLI Tool Wrapper - Main entry point
+# ============================================================================
+
+cli: ## Run CLI tool (usage: make cli gen module product)
+	@go run cmd/cli/main.go $(filter-out $@,$(MAKECMDGOALS))
+
+# Catch-all target to pass arguments to cli
+%:
+	@:
+
+# ============================================================================
+# Code Generation (Shortcuts)
+# ============================================================================
+
+gen: ## Generate code (usage: make gen module product)
+	@go run cmd/cli/main.go gen $(filter-out $@,$(MAKECMDGOALS))
+
+gen-module: ## Generate complete module (usage: make gen-module product)
+	@go run cmd/cli/main.go gen module $(filter-out $@,$(MAKECMDGOALS))
+
+gen-handler: ## Generate handler (usage: make gen-handler user)
+	@go run cmd/cli/main.go gen handler $(filter-out $@,$(MAKECMDGOALS))
+
+gen-repository: ## Generate repository (usage: make gen-repository order)
+	@go run cmd/cli/main.go gen repository $(filter-out $@,$(MAKECMDGOALS))
+
+gen-service: ## Generate service (usage: make gen-service auth)
+	@go run cmd/cli/main.go gen service $(filter-out $@,$(MAKECMDGOALS))
+
+gen-migration: ## Generate migration (usage: make gen-migration create_users)
+	@go run cmd/cli/main.go gen migration $(filter-out $@,$(MAKECMDGOALS))
+
+# ============================================================================
+# Development
+# ============================================================================
+
+dev: ## Start development server with hot reload
+	@go run cmd/cli/main.go dev
+
+run: ## Run application without hot reload
+	@go run cmd/cli/main.go run
+
+build: ## Build API binary
+	@go run cmd/cli/main.go build
+
+build-all: ## Build all binaries (API, Seeder, CLI)
+	@echo "$(BLUE)Building all binaries...$(NC)"
 	@go build -o bin/api cmd/api/main.go
-	@echo "✓ Binary created: bin/api"
-
-build-seeder:
-	@echo "Building seeder..."
 	@go build -o bin/seeder cmd/seeder/main.go
-	@echo "✓ Binary created: bin/seeder"
+	@go build -o bin/cli cmd/cli/main.go
+	@echo "$(GREEN)✓ All binaries built successfully$(NC)"
 
-test:
-	@echo "Running tests..."
-	@go test -v -cover ./...
+# ============================================================================
+# Testing & Code Quality
+# ============================================================================
 
-test-coverage:
-	@echo "Running tests with coverage..."
-	@go test -v -coverprofile=coverage.out ./...
-	@go tool cover -html=coverage.out -o coverage.html
-	@echo "✓ Coverage report: coverage.html"
-	@echo ""
-	@go tool cover -func=coverage.out | grep total
+test: ## Run all tests
+	@go run cmd/cli/main.go test
 
-clean:
-	@echo "Cleaning up..."
+test-verbose: ## Run tests with verbose output
+	@go run cmd/cli/main.go test -v
+
+test-coverage: ## Run tests with coverage report
+	@go run cmd/cli/main.go test coverage
+
+lint: ## Run linter
+	@go run cmd/cli/main.go lint
+
+fmt: ## Format code
+	@echo "$(BLUE)Formatting code (excluding templates)...$(NC)"
+	@gofmt -w $$(find . -name "*.go" -not -path "./templates/*" -not -path "./.git/*" -not -path "./vendor/*")
+	@echo "$(GREEN)✓ Code formatted$(NC)"
+
+vet: ## Run go vet
+	@go run cmd/cli/main.go vet
+
+mocks: ## Generate test mocks
+	@go run cmd/cli/main.go mocks
+
+check: fmt vet lint test ## Run all code quality checks
+
+# ============================================================================
+# Database
+# ============================================================================
+
+migrate: ## Run migrations (usage: make migrate up/down/status)
+	@go run cmd/cli/main.go migrate $(filter-out $@,$(MAKECMDGOALS))
+
+migrate-up: ## Run all migrations
+	@go run cmd/cli/main.go migrate up
+
+migrate-down: ## Rollback all migrations
+	@go run cmd/cli/main.go migrate down
+
+migrate-status: ## Show migration status
+	@go run cmd/cli/main.go migrate status
+
+seed: ## Seed database with initial data
+	@go run cmd/cli/main.go seed
+
+# ============================================================================
+# Docker
+# ============================================================================
+
+docker: ## Docker commands (usage: make docker up/down/logs)
+	@go run cmd/cli/main.go docker $(filter-out $@,$(MAKECMDGOALS))
+
+docker-up: ## Start Docker containers
+	@go run cmd/cli/main.go docker up
+
+docker-down: ## Stop Docker containers
+	@go run cmd/cli/main.go docker down
+
+docker-logs: ## Show Docker logs
+	@go run cmd/cli/main.go docker logs
+
+docker-rebuild: ## Rebuild Docker containers
+	@go run cmd/cli/main.go docker rebuild
+
+# ============================================================================
+# Tools
+# ============================================================================
+
+install: ## Install development tools
+	@go run cmd/cli/main.go install tools
+
+deps: ## Download Go dependencies
+	@echo "$(BLUE)Downloading dependencies...$(NC)"
+	@go mod download
+	@echo "$(GREEN)✓ Dependencies downloaded$(NC)"
+
+tidy: ## Tidy Go modules
+	@echo "$(BLUE)Tidying modules...$(NC)"
+	@go mod tidy
+	@echo "$(GREEN)✓ Modules tidied$(NC)"
+
+# ============================================================================
+# Cleanup
+# ============================================================================
+
+clean: ## Clean build artifacts
+	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	@rm -rf bin/
-	@rm -f coverage.out coverage.html
-	@go clean
-	@echo "✓ Clean completed"
+	@rm -f app coverage.out coverage.html
+	@echo "$(GREEN)✓ Cleanup complete$(NC)"
 
-docker-up:
-	@echo "Starting API Docker container..."
-	@docker compose up -d api
-	@echo "✓ Container started"
-	@echo "Run 'make docker-logs' to view logs"
+clean-all: clean ## Clean everything including dependencies
+	@echo "$(BLUE)Cleaning vendor and cache...$(NC)"
+	@go clean -cache -testcache -modcache
+	@echo "$(GREEN)✓ Everything cleaned$(NC)"
 
-docker-down:
-	@echo "Stopping API Docker container..."
-	@docker compose down api
-	@echo "✓ Container stopped"
+# ============================================================================
+# Quick Actions
+# ============================================================================
 
-docker-rebuild:
-	@echo "Rebuilding API Docker container..."
-	@docker compose down api
-	@docker compose build api
-	@docker compose up -d api
-	@echo "✓ Container rebuilt and started"
+start: docker-up migrate-up dev ## Quick start: docker + migrate + dev
 
-docker-logs:
-	@echo "Showing API container logs (Ctrl+C to exit)..."
-	@docker compose logs -f api
+stop: docker-down ## Stop all services
 
-docker-status:
-	@echo "API Docker container status:"
-	@docker compose ps api
+restart: stop start ## Restart all services
+
+logs: docker-logs ## Show all logs
+
+status: ## Show project status
+	@echo "$(BLUE)Project Status:$(NC)"
 	@echo ""
-	@CONTAINER=$$(docker ps --format '{{.Names}}' | grep -i go-rest-api-boilerplate | head -n 1); \
-	if [ -z "$$CONTAINER" ]; then \
-		echo "  Status: NOT RUNNING"; \
-	else \
-		echo "  Name: $$CONTAINER"; \
-		echo "  Status: RUNNING"; \
-		docker inspect --format='  Ports: {{range .NetworkSettings.Ports}}{{.}}{{end}}' $$CONTAINER; \
-	fi
-
-migrate-up:
-	@echo "Running migrations..."
-	@if [ ! -f .env ]; then \
-		echo "✗ Error: .env file not found"; \
-		echo "  Run: cp .env.example .env"; \
-		exit 1; \
-	fi
-	@if ! command -v migrate > /dev/null 2>&1; then \
-		echo "✗ Error: golang-migrate not installed"; \
-		echo "  Run: make install-tools"; \
-		exit 1; \
-	fi
-
-	@set -a; . ./.env; set +a; \
-	migrate -path migrations \
-		-database "postgresql://$$DB_USER:$$DB_PASS@$$DB_HOST:$$DB_PORT/$$DB_NAME?sslmode=disable" \
-		up && echo "✓ Up completed!" || (echo "✗ Up failed"; exit 1)
-
-migrate-down:
-	@echo "Rolling back migrations..."
-	@if [ ! -f .env ]; then \
-		echo "✗ Error: .env file not found"; \
-		echo "  Run: cp .env.example .env"; \
-		exit 1; \
-	fi
-	@if ! command -v migrate > /dev/null 2>&1; then \
-		echo "✗ Error: golang-migrate not installed"; \
-		echo "  Run: make install-tools"; \
-		exit 1; \
-	fi
-	@set -a; . ./.env; set +a; \
-	migrate -path migrations \
-		-database "postgresql://$$DB_USER:$$DB_PASS@$$DB_HOST:$$DB_PORT/$$DB_NAME?sslmode=disable" \
-		down && echo "✓ Drop completed!" || (echo "✗ Drop failed"; exit 1)
-
-migrate-create:
-	@if [ -z "$(NAME)" ]; then \
-		echo "✗ Error: NAME is required"; \
-		echo "  Usage: make migrate-create NAME=migration_name"; \
-		exit 1; \
-	fi
-	@TIMESTAMP=$$(date +%Y%m%d%H%M%S); \
-	touch migrations/$${TIMESTAMP}_$(NAME).up.sql; \
-	touch migrations/$${TIMESTAMP}_$(NAME).down.sql; \
-	echo "✓ Migration files created:"; \
-	echo "  - migrations/$${TIMESTAMP}_$(NAME).up.sql"; \
-	echo "  - migrations/$${TIMESTAMP}_$(NAME).down.sql"
-
-migrate-status:
-	@echo "Migration files:"
+	@echo "$(YELLOW)Go Version:$(NC)"
+	@go version
 	@echo ""
-	@ls -1 migrations/*.up.sql 2>/dev/null | sed 's|migrations/||' | sed 's|.up.sql||' || echo "No migration files found"
-
-seed: migrate-up
-	@echo "Running database seeder..."
-	@go run cmd/seeder/main.go
-
-lint:
-	@echo "Running linter..."
-	@golangci-lint run
-	@echo "✓ Linting completed"
-
-fmt:
-	@echo "Formatting code..."
-	@go fmt ./...
-	@echo "✓ Code formatted"
-
-vet:
-	@echo "Running go vet..."
-	@go vet ./...
-	@echo "✓ Vet completed"
-
-swagger-generate:
-	@echo "Generating OpenAPI specification from code annotations..."
-	@go run github.com/swaggo/swag/cmd/swag@latest init \
-		-g cmd/api/main.go \
-		--output docs \
-		--outputTypes json \
-		--parseDependency \
-		--parseInternal 2>&1 | grep -v "warning: failed to get package name" | grep -v "warning: failed to evaluate const" || true
-	@rm -f docs/docs.go docs/swagger.yaml
-	@echo "✓ Generated: docs/swagger.json"
+	@echo "$(YELLOW)Docker Status:$(NC)"
+	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "Docker not running"
 	@echo ""
-	@echo "To view documentation:"
-	@echo "  https://editor.swagger.io (import docs/swagger.json)"
-	@echo ""
-	@echo "To validate:"
-	@echo "  npx @apidevtools/swagger-cli validate docs/swagger.json"
+	@echo "$(YELLOW)Git Status:$(NC)"
+	@git status -s || echo "Not a git repository"
 
-migrate-force:
-	@if [ -z "$(VERSION)" ]; then \
-		echo "✗ Error: VERSION is required"; \
-		echo "  Usage: make migrate-force VERSION=20251231062946"; \
-		exit 1; \
-	fi
-	@if [ ! -f .env ]; then \
-		echo "✗ Error: .env file not found"; \
-		echo "  Run: cp .env.example .env"; \
-		exit 1; \
-	fi
-	@if ! command -v migrate > /dev/null 2>&1; then \
-		echo "✗ Error: golang-migrate not installed"; \
-		echo "  Run: make install-tools"; \
-		exit 1; \
-	fi
-	@set -a; . ./.env; set +a; \
-	echo "Forcing migration version to $(VERSION)..."; \
-	migrate -path migrations \
-		-database "postgresql://$$DB_USER:$$DB_PASS@$$DB_HOST:$$DB_PORT/$$DB_NAME?sslmode=disable" \
-		force $(VERSION) && echo "✓ Migration version forced to $(VERSION)"
+# ============================================================================
+# CI/CD Helpers
+# ============================================================================
 
+ci-test: ## Run tests for CI
+	@go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+ci-lint: ## Run linter for CI
+	@golangci-lint run --timeout=5m
+
+ci-build: ## Build for CI
+	@go build -v -o bin/api cmd/api/main.go
+	@go build -v -o bin/seeder cmd/seeder/main.go
+	@go build -v -o bin/cli cmd/cli/main.go
+
+ci: ci-lint ci-test ci-build ## Run all CI checks
 

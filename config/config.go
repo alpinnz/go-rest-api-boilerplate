@@ -24,12 +24,16 @@ type AppConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	Name     string
-	SSLMode  string
+	Host            string
+	Port            string
+	User            string
+	Password        string
+	Name            string
+	SSLMode         string
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+	ConnMaxIdleTime time.Duration
 }
 
 type RedisConfig struct {
@@ -60,12 +64,16 @@ func Load() (*Config, error) {
 			Port: getEnv("APP_PORT", "8080"),
 		},
 		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnv("DB_PORT", "5432"),
-			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASS", "postgres"),
-			Name:     getEnv("DB_NAME", "go-rest-api-boilerplate"),
-			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+			Host:            getEnv("DB_HOST", "localhost"),
+			Port:            getEnv("DB_PORT", "5432"),
+			User:            getEnv("DB_USER", "postgres"),
+			Password:        getEnv("DB_PASS", "postgres"),
+			Name:            getEnv("DB_NAME", "go-rest-api-boilerplate"),
+			SSLMode:         getEnv("DB_SSLMODE", "disable"),
+			MaxOpenConns:    getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
+			MaxIdleConns:    getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+			ConnMaxLifetime: parseDuration(getEnv("DB_CONN_MAX_LIFETIME", "5m")),
+			ConnMaxIdleTime: parseDuration(getEnv("DB_CONN_MAX_IDLE_TIME", "10m")),
 		},
 		Redis: RedisConfig{
 			Host:     getEnv("REDIS_HOST", "localhost"),
@@ -92,12 +100,61 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) Validate() error {
+	// App validation
 	if c.App.Port == "" {
 		return fmt.Errorf("APP_PORT is required")
 	}
-	if c.JWT.Secret == "change-this-secret-key" {
-		fmt.Println("Warning: Using default JWT_SECRET, please change in production")
+	if c.App.Env != "development" && c.App.Env != "staging" && c.App.Env != "production" {
+		return fmt.Errorf("APP_ENV must be one of: development, staging, production")
 	}
+
+	// Database validation
+	if c.Database.Host == "" {
+		return fmt.Errorf("DB_HOST is required")
+	}
+	if c.Database.Name == "" {
+		return fmt.Errorf("DB_NAME is required")
+	}
+	if c.Database.MaxOpenConns < 1 {
+		return fmt.Errorf("DB_MAX_OPEN_CONNS must be at least 1")
+	}
+	if c.Database.MaxIdleConns < 1 {
+		return fmt.Errorf("DB_MAX_IDLE_CONNS must be at least 1")
+	}
+	if c.Database.MaxIdleConns > c.Database.MaxOpenConns {
+		return fmt.Errorf("DB_MAX_IDLE_CONNS cannot be greater than DB_MAX_OPEN_CONNS")
+	}
+
+	// Redis validation
+	if c.Redis.Host == "" {
+		return fmt.Errorf("REDIS_HOST is required")
+	}
+
+	// JWT validation
+	if c.JWT.Secret == "" {
+		return fmt.Errorf("JWT_SECRET is required")
+	}
+	if c.JWT.Secret == "change-this-secret-key" && c.App.Env == "production" {
+		return fmt.Errorf("JWT_SECRET must be changed in production environment")
+	}
+	if len(c.JWT.Secret) < 32 {
+		fmt.Println("Warning: JWT_SECRET should be at least 32 characters for better security")
+	}
+	if c.JWT.Expiration == 0 {
+		return fmt.Errorf("JWT_EXPIRATION is required")
+	}
+
+	// Server validation
+	if c.Server.ReadTimeout == 0 {
+		return fmt.Errorf("READ_TIMEOUT is required")
+	}
+	if c.Server.WriteTimeout == 0 {
+		return fmt.Errorf("WRITE_TIMEOUT is required")
+	}
+	if c.Server.ShutdownTimeout == 0 {
+		return fmt.Errorf("SHUTDOWN_TIMEOUT is required")
+	}
+
 	return nil
 }
 

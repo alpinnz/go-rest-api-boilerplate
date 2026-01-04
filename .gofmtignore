@@ -1,0 +1,4 @@
+# Ignore template files from go fmt
+# These files contain placeholder code with multiple package declarations
+templates/
+

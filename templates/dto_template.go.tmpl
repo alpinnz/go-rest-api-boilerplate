@@ -1,0 +1,64 @@
+//go:build ignore
+// +build ignore
+
+package dto
+
+import (
+	"time"
+
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain/entity"
+	"github.com/google/uuid"
+)
+
+// PLACEHOLDER_EntityDTO represents PLACEHOLDER_entity data transfer object
+type PLACEHOLDER_EntityDTO struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// CreatePLACEHOLDER_EntityRequest represents request to create PLACEHOLDER_entity
+type CreatePLACEHOLDER_EntityRequest struct {
+	Name string `json:"name" binding:"required" example:"Sample Name"`
+}
+
+// UpdatePLACEHOLDER_EntityRequest represents request to update PLACEHOLDER_entity
+type UpdatePLACEHOLDER_EntityRequest struct {
+	Name string `json:"name" binding:"required" example:"Updated Name"`
+}
+
+// PLACEHOLDER_EntityListResponse represents paginated PLACEHOLDER_entity list response
+type PLACEHOLDER_EntityListResponse struct {
+	PLACEHOLDER_Entities []*PLACEHOLDER_EntityDTO `json:"PLACEHOLDER_entities"`
+	Total                int64                    `json:"total"`
+	Limit                int                      `json:"limit"`
+	Offset               int                      `json:"offset"`
+	HasMore              bool                     `json:"has_more"`
+}
+
+// ToPLACEHOLDER_EntityDTO converts entity to DTO
+func ToPLACEHOLDER_EntityDTO(PLACEHOLDER_entity *entity.PLACEHOLDER_Entity) *PLACEHOLDER_EntityDTO {
+	return &PLACEHOLDER_EntityDTO{
+		ID:        PLACEHOLDER_entity.ID,
+		Name:      PLACEHOLDER_entity.Name,
+		CreatedAt: PLACEHOLDER_entity.CreatedAt,
+		UpdatedAt: PLACEHOLDER_entity.UpdatedAt,
+	}
+}
+
+// ToPLACEHOLDER_EntityListResponse converts entities to list response
+func ToPLACEHOLDER_EntityListResponse(PLACEHOLDER_entities []*entity.PLACEHOLDER_Entity, total int64, limit, offset int, hasMore bool) *PLACEHOLDER_EntityListResponse {
+	dtos := make([]*PLACEHOLDER_EntityDTO, 0, len(PLACEHOLDER_entities))
+	for _, PLACEHOLDER_entity := range PLACEHOLDER_entities {
+		dtos = append(dtos, ToPLACEHOLDER_EntityDTO(PLACEHOLDER_entity))
+	}
+
+	return &PLACEHOLDER_EntityListResponse{
+		PLACEHOLDER_Entities: dtos,
+		Total:                total,
+		Limit:                limit,
+		Offset:               offset,
+		HasMore:              hasMore,
+	}
+}

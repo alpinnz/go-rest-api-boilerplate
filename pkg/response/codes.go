@@ -18,6 +18,8 @@ const (
 	CodeConflict        = "CONFLICT"
 	CodeInvalidInput    = "INVALID_INPUT"
 	CodeInvalidJSON     = "INVALID_JSON"
+	CodeRequestTimeout  = "REQUEST_TIMEOUT"
+	CodeTooManyRequests = "TOO_MANY_REQUESTS"
 
 	// Server error codes (5xx equivalent)
 

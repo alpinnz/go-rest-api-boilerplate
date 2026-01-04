@@ -40,14 +40,6 @@ type FieldError struct {
 	Message string `json:"message"`
 }
 
-// Pagination represents pagination metadata.
-type Pagination struct {
-	Page      int `json:"page"`
-	PerPage   int `json:"per_page"`
-	TotalData int `json:"total_data"`
-	TotalPage int `json:"total_page"`
-}
-
 // Sort represents sorting criteria.
 type Sort struct {
 	Field string `json:"field"`
@@ -55,9 +47,23 @@ type Sort struct {
 }
 
 // Meta represents response metadata.
+// Uses pagination.Meta for pagination data.
 type Meta struct {
-	Pagination *Pagination `json:"pagination,omitempty"`
+	Pagination interface{} `json:"pagination,omitempty"` // Use pagination.Meta type
 	Sort       []Sort      `json:"sort,omitempty"`
+}
+
+// NewMeta creates a new Meta instance.
+// For pagination, pass pagination.Meta from pkg/pagination.
+// Example:
+//
+//	paginationMeta := pagination.NewMeta(page, perPage, totalData)
+//	meta := response.NewMeta(paginationMeta, nil)
+func NewMeta(paginationMeta interface{}, sort []Sort) *Meta {
+	return &Meta{
+		Pagination: paginationMeta,
+		Sort:       sort,
+	}
 }
 
 // getRequestID retrieves request ID from context.
@@ -531,6 +537,68 @@ func GatewayTimeout(c *gin.Context, args ...interface{}) {
 		Message:   getMessage(c, "common.gateway_timeout", "Gateway timeout"),
 		Data:      nil,
 		Errors:    gin.H{"hint": hint},
+		Meta:      nil,
+		RequestID: getRequestID(c),
+	})
+}
+
+// TooManyRequests sends a rate limit exceeded error response (429 Too Many Requests).
+// Can accept (message string) for manual usage or (AppError) for localized usage.
+// Automatically uses localization from context if available.
+func TooManyRequests(c *gin.Context, args ...interface{}) {
+	// Check if first arg is AppError
+	if len(args) == 1 {
+		if appErr, ok := args[0].(domain.AppError); ok {
+			Error(c, 429, appErr)
+			return
+		}
+	}
+
+	// Legacy signature: message string
+	message := "Too many requests"
+	if len(args) >= 1 {
+		if m, ok := args[0].(string); ok {
+			message = m
+		}
+	}
+
+	code := CodeTooManyRequests
+	c.JSON(429, Response{
+		Code:      &code,
+		Message:   getMessage(c, "common.too_many_requests", message),
+		Data:      nil,
+		Errors:    nil,
+		Meta:      nil,
+		RequestID: getRequestID(c),
+	})
+}
+
+// RequestTimeout sends a request timeout error response (408 Request Timeout).
+// Can accept (message string) for manual usage or (AppError) for localized usage.
+// Automatically uses localization from context if available.
+func RequestTimeout(c *gin.Context, args ...interface{}) {
+	// Check if first arg is AppError
+	if len(args) == 1 {
+		if appErr, ok := args[0].(domain.AppError); ok {
+			Error(c, 408, appErr)
+			return
+		}
+	}
+
+	// Legacy signature: message string
+	message := "Request timeout"
+	if len(args) >= 1 {
+		if m, ok := args[0].(string); ok {
+			message = m
+		}
+	}
+
+	code := CodeRequestTimeout
+	c.JSON(408, Response{
+		Code:      &code,
+		Message:   getMessage(c, "common.request_timeout", message),
+		Data:      nil,
+		Errors:    nil,
 		Meta:      nil,
 		RequestID: getRequestID(c),
 	})

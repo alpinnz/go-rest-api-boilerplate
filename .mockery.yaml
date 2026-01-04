@@ -1,0 +1,15 @@
+# mockery configuration
+# See: https://vektra.github.io/mockery/latest/configuration/
+
+with-expecter: true
+dir: "internal/domain/repository/mocks"
+filename: "{{.InterfaceName}}.go"
+mockname: "Mock{{.InterfaceName}}"
+outpkg: mocks
+packages:
+  github.com/alpinnz/go-rest-api-boilerplate/internal/domain/repository:
+    interfaces:
+      UserRepository:
+      RoleRepository:
+      SessionRepository:
+

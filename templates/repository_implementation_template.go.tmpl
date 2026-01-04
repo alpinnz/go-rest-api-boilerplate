@@ -1,0 +1,206 @@
+//go:build ignore
+// +build ignore
+
+package repository
+
+import (
+	"context"
+	"database/sql"
+	"time"
+
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain/entity"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain/repository"
+	"github.com/google/uuid"
+)
+
+type PLACEHOLDER_entityRepository struct {
+	db *sql.DB
+}
+
+// NewPLACEHOLDER_EntityRepository creates a new PLACEHOLDER_entity repository
+func NewPLACEHOLDER_EntityRepository(db *sql.DB) repository.PLACEHOLDER_EntityRepository {
+	return &PLACEHOLDER_entityRepository{db: db}
+}
+
+func (r *PLACEHOLDER_entityRepository) Create(ctx context.Context, PLACEHOLDER_entity *entity.PLACEHOLDER_Entity) error {
+	query := `
+		INSERT INTO PLACEHOLDER_entities (id, name, created_at, updated_at)
+		VALUES ($1, $2, $3, $4)
+	`
+
+	PLACEHOLDER_entity.ID = uuid.New()
+	PLACEHOLDER_entity.CreatedAt = time.Now()
+	PLACEHOLDER_entity.UpdatedAt = time.Now()
+
+	_, err := r.db.ExecContext(ctx, query,
+		PLACEHOLDER_entity.ID,
+		PLACEHOLDER_entity.Name,
+		PLACEHOLDER_entity.CreatedAt,
+		PLACEHOLDER_entity.UpdatedAt,
+	)
+
+	return err
+}
+
+func (r *PLACEHOLDER_entityRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.PLACEHOLDER_Entity, error) {
+	query := `
+		SELECT id, name, created_at, updated_at, deleted_at
+		FROM PLACEHOLDER_entities
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+
+	PLACEHOLDER_entity := &entity.PLACEHOLDER_Entity{}
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&PLACEHOLDER_entity.ID,
+		&PLACEHOLDER_entity.Name,
+		&PLACEHOLDER_entity.CreatedAt,
+		&PLACEHOLDER_entity.UpdatedAt,
+		&PLACEHOLDER_entity.DeletedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return PLACEHOLDER_entity, nil
+}
+
+func (r *PLACEHOLDER_entityRepository) FindAll(ctx context.Context, limit, offset int) ([]*entity.PLACEHOLDER_Entity, error) {
+	query := `
+		SELECT id, name, created_at, updated_at, deleted_at
+		FROM PLACEHOLDER_entities
+		WHERE deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	PLACEHOLDER_entities := []*entity.PLACEHOLDER_Entity{}
+	for rows.Next() {
+		PLACEHOLDER_entity := &entity.PLACEHOLDER_Entity{}
+		err := rows.Scan(
+			&PLACEHOLDER_entity.ID,
+			&PLACEHOLDER_entity.Name,
+			&PLACEHOLDER_entity.CreatedAt,
+			&PLACEHOLDER_entity.UpdatedAt,
+			&PLACEHOLDER_entity.DeletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		PLACEHOLDER_entities = append(PLACEHOLDER_entities, PLACEHOLDER_entity)
+	}
+
+	return PLACEHOLDER_entities, nil
+}
+
+func (r *PLACEHOLDER_entityRepository) Update(ctx context.Context, PLACEHOLDER_entity *entity.PLACEHOLDER_Entity) error {
+	query := `
+		UPDATE PLACEHOLDER_entities
+		SET name = $1, updated_at = $2
+		WHERE id = $3 AND deleted_at IS NULL
+	`
+
+	PLACEHOLDER_entity.UpdatedAt = time.Now()
+
+	result, err := r.db.ExecContext(ctx, query,
+		PLACEHOLDER_entity.Name,
+		PLACEHOLDER_entity.UpdatedAt,
+		PLACEHOLDER_entity.ID,
+	)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *PLACEHOLDER_entityRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `
+		UPDATE PLACEHOLDER_entities
+		SET deleted_at = $1
+		WHERE id = $2 AND deleted_at IS NULL
+	`
+
+	result, err := r.db.ExecContext(ctx, query, time.Now(), id)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *PLACEHOLDER_entityRepository) HardDelete(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM PLACEHOLDER_entities WHERE id = $1`
+
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *PLACEHOLDER_entityRepository) Count(ctx context.Context) (int64, error) {
+	query := `SELECT COUNT(*) FROM PLACEHOLDER_entities WHERE deleted_at IS NULL`
+
+	var count int64
+	err := r.db.QueryRowContext(ctx, query).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (r *PLACEHOLDER_entityRepository) Restore(ctx context.Context, id uuid.UUID) error {
+	query := `
+		UPDATE PLACEHOLDER_entities
+		SET deleted_at = NULL, updated_at = $1
+		WHERE id = $2 AND deleted_at IS NOT NULL
+	`
+
+	result, err := r.db.ExecContext(ctx, query, time.Now(), id)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}

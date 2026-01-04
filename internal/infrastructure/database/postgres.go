@@ -3,11 +3,21 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/lib/pq"
 )
 
-func NewPostgresDB(dsn string) (*sql.DB, error) {
+// PoolConfig represents database connection pool configuration
+type PoolConfig struct {
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+	ConnMaxIdleTime time.Duration
+}
+
+// NewPostgresDB creates a new PostgreSQL database connection with connection pooling
+func NewPostgresDB(dsn string, poolConfig PoolConfig) (*sql.DB, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -17,8 +27,11 @@ func NewPostgresDB(dsn string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
+	// Configure connection pool
+	db.SetMaxOpenConns(poolConfig.MaxOpenConns)
+	db.SetMaxIdleConns(poolConfig.MaxIdleConns)
+	db.SetConnMaxLifetime(poolConfig.ConnMaxLifetime)
+	db.SetConnMaxIdleTime(poolConfig.ConnMaxIdleTime)
 
 	return db, nil
 }

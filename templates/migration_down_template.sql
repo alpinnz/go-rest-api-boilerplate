@@ -1,0 +1,3 @@
+-- Drop PLACEHOLDER_entities table
+DROP TABLE IF EXISTS PLACEHOLDER_entities;
+

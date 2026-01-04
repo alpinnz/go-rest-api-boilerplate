@@ -1,0 +1,38 @@
+//go:build ignore
+// +build ignore
+
+package repository
+
+import (
+	"context"
+
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain/entity"
+	"github.com/google/uuid"
+)
+
+// PLACEHOLDER_EntityRepository defines the interface for PLACEHOLDER_entity data operations
+type PLACEHOLDER_EntityRepository interface {
+	// Create creates a new PLACEHOLDER_entity
+	Create(ctx context.Context, PLACEHOLDER_entity *entity.PLACEHOLDER_Entity) error
+
+	// FindByID retrieves a PLACEHOLDER_entity by ID (excludes soft deleted)
+	FindByID(ctx context.Context, id uuid.UUID) (*entity.PLACEHOLDER_Entity, error)
+
+	// FindAll retrieves all PLACEHOLDER_entities with pagination (excludes soft deleted)
+	FindAll(ctx context.Context, limit, offset int) ([]*entity.PLACEHOLDER_Entity, error)
+
+	// Update updates a PLACEHOLDER_entity
+	Update(ctx context.Context, PLACEHOLDER_entity *entity.PLACEHOLDER_Entity) error
+
+	// Delete soft deletes a PLACEHOLDER_entity
+	Delete(ctx context.Context, id uuid.UUID) error
+
+	// HardDelete permanently deletes a PLACEHOLDER_entity
+	HardDelete(ctx context.Context, id uuid.UUID) error
+
+	// Count returns the total count of PLACEHOLDER_entities (excludes soft deleted)
+	Count(ctx context.Context) (int64, error)
+
+	// Restore restores a soft deleted PLACEHOLDER_entity
+	Restore(ctx context.Context, id uuid.UUID) error
+}

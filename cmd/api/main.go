@@ -48,7 +48,14 @@ func main() {
 
 	auth.SetJWTSecret(cfg.JWT.Secret)
 
-	db, err := database.NewPostgresDB(cfg.Database.DSN())
+	poolConfig := database.PoolConfig{
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+		ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
+	}
+
+	db, err := database.NewPostgresDB(cfg.Database.DSN(), poolConfig)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -84,7 +91,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(authUseCase)
 	userHandler := handler.NewUserHandler(userUseCase)
 	roleHandler := handler.NewRoleHandler(roleUseCase)
-	healthHandler := handler.NewHealthHandler()
+	healthHandler := handler.NewHealthHandler(db, redisClient)
 	authMiddleware := middleware.NewAuthMiddleware(authUseCase)
 
 	r := router.NewRouter(authHandler, userHandler, roleHandler, healthHandler, authMiddleware)

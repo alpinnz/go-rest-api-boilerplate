@@ -2,6 +2,7 @@ package router
 
 import (
 	"log"
+	"time"
 
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/delivery/http/handler"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/localization"
@@ -50,21 +51,31 @@ func (r *Router) Setup() *gin.Engine {
 	r.engine.Use(middleware.Language(bundle))
 	r.engine.Use(middleware.CORS())
 	r.engine.Use(middleware.Recovery())
+	r.engine.Use(middleware.Sanitize())                // XSS protection
+	r.engine.Use(middleware.Timeout(30 * time.Second)) // 30 second timeout
 
 	// Serve OpenAPI specification
 	r.engine.StaticFile("/docs/swagger.json", "./docs/swagger.json")
+	r.engine.StaticFile("/docs", "./docs/swagger.html")
+	r.engine.StaticFile("/docs/", "./docs/swagger.html")
 
 	v1 := r.engine.Group("/api/v1")
 
 	{
-		// Health check endpoint
+		// Health check endpoint (no rate limit)
 		health := v1.Group("/health")
 		{
 			health.GET("", r.healthHandler.Check)
+			health.GET("/live", r.healthHandler.Liveness)
+			health.GET("/ready", r.healthHandler.Readiness)
 		}
+
+		// Rate limiter for authentication endpoints (prevent brute force)
+		authLimiter := middleware.NewRateLimiter(10, 1*time.Minute) // 10 requests per minute
 
 		// Authentication endpoints
 		auth := v1.Group("/auth")
+		auth.Use(authLimiter.Limit()) // Apply rate limiting
 		{
 			auth.POST("/register", r.authHandler.Register)
 			auth.POST("/login", r.authHandler.Login)
