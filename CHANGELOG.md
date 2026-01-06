@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- WebSocket server for real-time bidirectional communication
+  - Hub pattern for connection management
+  - JWT authentication required for WebSocket connections
+  - Message broadcasting to all clients
+  - Targeted message sending to specific users
+  - Structured message types (notification, system, chat)
+  - Ping/Pong health checks (54 second interval)
+  - Graceful connection handling with automatic cleanup
+  - Thread-safe operations with sync.RWMutex
+  - Detailed connection statistics endpoint with 6 metrics
+  - Per-user connection tracking
+  - Queue health monitoring
+  - Top 10 users by connection count
+  - WebSocket use case layer for business logic
+  - Complete documentation in internal/websocket/README.md
+  - Unit tests for WebSocket hub functionality
 - Separate JWT configuration for access and refresh tokens
   - ACCESS_TOKEN_SECRET and ACCESS_TOKEN_EXPIRATION (default: 15m)
   - REFRESH_TOKEN_SECRET and REFRESH_TOKEN_EXPIRATION (default: 168h/7 days)
@@ -16,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced JWT validation with automatic secret selection based on token type
 - Makefile automation with essential commands
   - Code generation commands (gen-module, gen-handler, gen-repository, gen-usecase, gen-migration)
+  - Documentation generation (swagger)
   - Development commands (dev, run, build)
   - Testing commands (test, test-coverage, fmt, lint, vet, mocks, check)
   - Database commands (migrate-up, migrate-down, migrate-status, seed)
@@ -41,18 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All commands simplified: `make dev`, `make test`, `make gen-module product`
 - Updated GitHub Actions CI/CD workflow to use Makefile
 - Simplified Quick Start guide with Makefile commands
-- Consolidated documentation structure (7 markdown files total)
+- Consolidated documentation structure (single source of truth for each topic)
+- Documentation cleanup: removed redundant files, consolidated WebSocket docs
+- All markdown files now consistent without emojis
 - Response package now uses pagination.Meta to avoid redundancy
 - Templates folder moved from root to cmd/cli/commands/generator/templates/
 - Swagger docs moved from root docs/ to internal/delivery/http/docs/
 - All CLI output messages use `make` commands instead of `app` binary
 - Import path for templates updated to cmd/cli/commands/generator/templates
+- WebSocket documentation consolidated into internal/websocket/README.md
 
 ### Removed
 - Single JWT_SECRET and JWT_EXPIRATION environment variables (replaced with separate access/refresh configs)
 - Hardcoded token expiration constants (now configurable via environment)
 - SetJWTSecret() function (replaced with SetJWTConfig())
-- Redundant documentation files (cmd/cli/README.md)
+- Redundant documentation files (cmd/cli/README.md, redundant WebSocket docs)
 - Duplicate workflow guides
 - RBAC middleware (redundant - role checking done at handler level)
 - Metrics handler and middleware (unused, not implemented)
@@ -61,6 +81,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Templates folder from root level (moved to generator package)
 - Docs folder from root level (moved to internal/delivery/http/docs/)
 - All emojis from markdown documentation
+- internal/websocket/examples.go (examples moved to README.md)
+- Seven redundant WebSocket documentation files
 
 ## [1.0.0] - 2026-01-04
 
@@ -272,7 +294,6 @@ Check out the new templates in the `cmd/cli/commands/generator/templates/` direc
 
 ### Planned for Next Release
 
-- [ ] WebSocket support
 - [ ] GraphQL API support
 - [ ] gRPC API support
 - [ ] Event sourcing

@@ -18,6 +18,7 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/middleware"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/repository"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/usecase"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/websocket"
 	"github.com/alpinnz/go-rest-api-boilerplate/pkg/auth"
 )
 
@@ -93,13 +94,21 @@ func main() {
 		10*time.Second,
 	)
 
+	// Initialize WebSocket hub
+	wsHub := websocket.NewHub()
+	go wsHub.Run()
+
+	// WebSocket use case can be used for broadcasting messages
+	_ = usecase.NewWebSocketUseCase(wsHub)
+
 	authHandler := handler.NewAuthHandler(authUseCase)
 	userHandler := handler.NewUserHandler(userUseCase)
 	roleHandler := handler.NewRoleHandler(roleUseCase)
 	healthHandler := handler.NewHealthHandler(db, redisClient)
+	websocketHandler := handler.NewWebSocketHandler(wsHub)
 	authMiddleware := middleware.NewAuthMiddleware(authUseCase)
 
-	r := router.NewRouter(authHandler, userHandler, roleHandler, healthHandler, authMiddleware)
+	r := router.NewRouter(authHandler, userHandler, roleHandler, healthHandler, websocketHandler, authMiddleware)
 	engine := r.Setup()
 
 	srv := &http.Server{

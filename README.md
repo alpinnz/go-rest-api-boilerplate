@@ -36,6 +36,7 @@ Production-ready REST API boilerplate built with Go, following Clean Architectur
 ## Features
 
 ### New Features (2026)
+- **WebSocket Server** - Real-time bidirectional communication with Hub pattern and user targeting
 - **CI/CD Pipeline** - Automated testing, linting, and releases with GitHub Actions
 - **Enhanced Health Checks** - Comprehensive checks with DB, Redis status, and liveness/readiness probes
 - **Developer Templates** - Rapid feature development with pre-built templates
@@ -255,6 +256,12 @@ make help                        # Show all available commands
 - `GET  /api/v1/roles/:id` - Get role by UUID
 - `PUT  /api/v1/roles/:id` - Update role by UUID
 - `DELETE /api/v1/roles/:id` - Delete role by UUID (soft delete)
+
+### WebSocket (Protected)
+- `GET  /api/v1/ws` - WebSocket connection upgrade (requires JWT authentication)
+- `GET  /api/v1/ws/stats` - Get WebSocket connection statistics with detailed metrics
+
+**WebSocket Documentation**: See [internal/websocket/README.md](internal/websocket/README.md) for detailed implementation, usage examples, and client integration guides.
 
 ## Authentication
 

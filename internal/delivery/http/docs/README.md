@@ -4,8 +4,12 @@ OpenAPI/Swagger documentation files.
 
 ## Files
 
-- `swagger.json` - OpenAPI 2.0 specification (auto-generated)
-- `swagger.html` - Swagger UI interface (static file)
+- `docs.go` - Auto-generated Go code (gitignored, regenerate with `make swagger`)
+- `swagger.json` - OpenAPI 2.0 specification (gitignored, auto-generated)
+- `swagger.yaml` - YAML format specification (gitignored, auto-generated)
+- `swagger.html` - Swagger UI interface (static file, committed to repo)
+
+**Note:** Only `swagger.html` should be committed to the repository. All other files are auto-generated and should be regenerated in each environment.
 
 ## Access
 
@@ -20,11 +24,11 @@ Only `swagger.json` is automatically generated from code annotations using Swag.
 
 To regenerate:
 ```bash
-# Install swag if not already installed
-go install github.com/swaggo/swag/cmd/swag@latest
+# Using Makefile (recommended)
+make swagger
 
-# Generate swagger.json
-swag init -g cmd/api/main.go -o internal/delivery/http/docs
+# Or manually
+swag init -g cmd/api/main.go -o internal/delivery/http/docs --parseDependency --parseInternal
 ```
 
 **Note:** `swagger.html` is a static HTML file that loads Swagger UI from CDN and should be committed to the repository.
@@ -53,9 +57,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 ## Best Practices
 
-- Regenerate `swagger.json` after adding or modifying API endpoints
+- Regenerate documentation after adding or modifying API endpoints
 - Keep annotations up to date with implementation
 - Test documentation in Swagger UI before committing
-- `swagger.json` is gitignored and should be regenerated in each environment
-- `swagger.html` is committed to the repository as it's a static UI wrapper
+- Only commit `swagger.html` to repository
+- Auto-generated files (`docs.go`, `swagger.json`, `swagger.yaml`) should be gitignored
+- Each environment should regenerate documentation with `make swagger`
 

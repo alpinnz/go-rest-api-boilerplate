@@ -52,3 +52,5 @@ tmp/
 
 # Generated API documentation
 internal/delivery/http/docs/swagger.json
+internal/delivery/http/docs/docs.go
+internal/delivery/http/docs/swagger.yaml

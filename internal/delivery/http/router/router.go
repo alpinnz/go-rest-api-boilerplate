@@ -11,12 +11,13 @@ import (
 )
 
 type Router struct {
-	engine         *gin.Engine
-	authHandler    *handler.AuthHandler
-	userHandler    *handler.UserHandler
-	roleHandler    *handler.RoleHandler
-	healthHandler  *handler.HealthHandler
-	authMiddleware *middleware.AuthMiddleware
+	engine           *gin.Engine
+	authHandler      *handler.AuthHandler
+	userHandler      *handler.UserHandler
+	roleHandler      *handler.RoleHandler
+	healthHandler    *handler.HealthHandler
+	websocketHandler *handler.WebSocketHandler
+	authMiddleware   *middleware.AuthMiddleware
 }
 
 func NewRouter(
@@ -24,15 +25,17 @@ func NewRouter(
 	userHandler *handler.UserHandler,
 	roleHandler *handler.RoleHandler,
 	healthHandler *handler.HealthHandler,
+	websocketHandler *handler.WebSocketHandler,
 	authMiddleware *middleware.AuthMiddleware,
 ) *Router {
 	return &Router{
-		engine:         gin.Default(),
-		authHandler:    authHandler,
-		userHandler:    userHandler,
-		roleHandler:    roleHandler,
-		healthHandler:  healthHandler,
-		authMiddleware: authMiddleware,
+		engine:           gin.Default(),
+		authHandler:      authHandler,
+		userHandler:      userHandler,
+		roleHandler:      roleHandler,
+		healthHandler:    healthHandler,
+		websocketHandler: websocketHandler,
+		authMiddleware:   authMiddleware,
 	}
 }
 
@@ -105,6 +108,13 @@ func (r *Router) Setup() *gin.Engine {
 			roles.GET("/:id", r.roleHandler.GetByID)
 			roles.PUT("/:id", r.roleHandler.Update)
 			roles.DELETE("/:id", r.roleHandler.Delete)
+		}
+
+		// WebSocket endpoints
+		ws := v1.Group("/ws")
+		{
+			ws.GET("", r.authMiddleware.Authenticate(), r.websocketHandler.Connect)
+			ws.GET("/stats", r.authMiddleware.Authenticate(), r.websocketHandler.GetStats)
 		}
 	}
 

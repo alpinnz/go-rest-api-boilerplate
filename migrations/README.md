@@ -21,6 +21,8 @@ Migrations are organized in pairs:
 20260102053628_create_tabel_user_roles.down.sql # Drop user_roles table
 ```
 
+Note: Migration file names use "tabel" (as originally created). Future migrations should use "table" for consistency.
+
 ## Schema Overview
 
 ### Users Table

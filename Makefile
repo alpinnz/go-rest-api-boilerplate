@@ -1,4 +1,4 @@
-.PHONY: help dev run build test lint fmt vet mocks migrate seed docker install clean
+.PHONY: help dev run build test lint fmt vet mocks swagger migrate seed docker install clean
 
 # Default target
 .DEFAULT_GOAL := help
@@ -43,6 +43,11 @@ gen-usecase: ## Generate usecase (usage: make gen-usecase name=auth)
 
 gen-migration: ## Generate migration (usage: make gen-migration name=create_users)
 	@go run cmd/cli/main.go gen migration $(name)
+
+swagger: ## Generate Swagger/OpenAPI documentation
+	@echo "$(BLUE)Generating Swagger documentation...$(NC)"
+	@swag init -g cmd/api/main.go -o internal/delivery/http/docs --parseDependency --parseInternal || (echo "$(RED)Swag not installed. Run: make install$(NC)" && exit 1)
+	@echo "$(GREEN)✓ Swagger documentation generated: internal/delivery/http/docs/swagger.json$(NC)"
 
 # ============================================================================
 # Development
