@@ -46,7 +46,12 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	auth.SetJWTSecret(cfg.JWT.Secret)
+	auth.SetJWTConfig(
+		cfg.JWT.AccessTokenSecret,
+		cfg.JWT.AccessTokenExpiration,
+		cfg.JWT.RefreshTokenSecret,
+		cfg.JWT.RefreshTokenExpiration,
+	)
 
 	poolConfig := database.PoolConfig{
 		MaxOpenConns:    cfg.Database.MaxOpenConns,

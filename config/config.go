@@ -44,8 +44,10 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
-	Secret     string
-	Expiration time.Duration
+	AccessTokenSecret      string
+	AccessTokenExpiration  time.Duration
+	RefreshTokenSecret     string
+	RefreshTokenExpiration time.Duration
 }
 
 type ServerConfig struct {
@@ -82,8 +84,10 @@ func Load() (*Config, error) {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		JWT: JWTConfig{
-			Secret:     getEnv("JWT_SECRET", "change-this-secret-key"),
-			Expiration: parseDuration(getEnv("JWT_EXPIRATION", "24h")),
+			AccessTokenSecret:      getEnv("ACCESS_TOKEN_SECRET", "change-this-access-token-secret-key"),
+			AccessTokenExpiration:  parseDuration(getEnv("ACCESS_TOKEN_EXPIRATION", "15m")),
+			RefreshTokenSecret:     getEnv("REFRESH_TOKEN_SECRET", "change-this-refresh-token-secret-key"),
+			RefreshTokenExpiration: parseDuration(getEnv("REFRESH_TOKEN_EXPIRATION", "168h")),
 		},
 		Server: ServerConfig{
 			ReadTimeout:     parseDuration(getEnv("READ_TIMEOUT", "10s")),
@@ -131,17 +135,30 @@ func (c *Config) Validate() error {
 	}
 
 	// JWT validation
-	if c.JWT.Secret == "" {
-		return fmt.Errorf("JWT_SECRET is required")
+	if c.JWT.AccessTokenSecret == "" {
+		return fmt.Errorf("ACCESS_TOKEN_SECRET is required")
 	}
-	if c.JWT.Secret == "change-this-secret-key" && c.App.Env == "production" {
-		return fmt.Errorf("JWT_SECRET must be changed in production environment")
+	if c.JWT.AccessTokenSecret == "change-this-access-token-secret-key" && c.App.Env == "production" {
+		return fmt.Errorf("ACCESS_TOKEN_SECRET must be changed in production environment")
 	}
-	if len(c.JWT.Secret) < 32 {
-		fmt.Println("Warning: JWT_SECRET should be at least 32 characters for better security")
+	if len(c.JWT.AccessTokenSecret) < 32 {
+		fmt.Println("Warning: ACCESS_TOKEN_SECRET should be at least 32 characters for better security")
 	}
-	if c.JWT.Expiration == 0 {
-		return fmt.Errorf("JWT_EXPIRATION is required")
+	if c.JWT.AccessTokenExpiration == 0 {
+		return fmt.Errorf("ACCESS_TOKEN_EXPIRATION is required")
+	}
+
+	if c.JWT.RefreshTokenSecret == "" {
+		return fmt.Errorf("REFRESH_TOKEN_SECRET is required")
+	}
+	if c.JWT.RefreshTokenSecret == "change-this-refresh-token-secret-key" && c.App.Env == "production" {
+		return fmt.Errorf("REFRESH_TOKEN_SECRET must be changed in production environment")
+	}
+	if len(c.JWT.RefreshTokenSecret) < 32 {
+		fmt.Println("Warning: REFRESH_TOKEN_SECRET should be at least 32 characters for better security")
+	}
+	if c.JWT.RefreshTokenExpiration == 0 {
+		return fmt.Errorf("REFRESH_TOKEN_EXPIRATION is required")
 	}
 
 	// Server validation

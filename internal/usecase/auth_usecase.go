@@ -114,12 +114,12 @@ func (uc *AuthUseCase) Login(ctx context.Context, input LoginInput) (*AuthResult
 	}
 
 	// Store access token session
-	if err := uc.sessionRepo.SetAccessToken(ctx, accessToken, user.ID, auth.AccessTokenExpiration); err != nil {
+	if err := uc.sessionRepo.SetAccessToken(ctx, accessToken, user.ID, auth.GetAccessTokenExpiration()); err != nil {
 		return nil, err
 	}
 
 	// Store refresh token mapping
-	if err := uc.sessionRepo.SetRefreshToken(ctx, refreshToken, accessToken, auth.RefreshTokenExpiration); err != nil {
+	if err := uc.sessionRepo.SetRefreshToken(ctx, refreshToken, accessToken, auth.GetRefreshTokenExpiration()); err != nil {
 		return nil, err
 	}
 
@@ -190,12 +190,12 @@ func (uc *AuthUseCase) RefreshToken(ctx context.Context, refreshToken string) (*
 	}
 
 	// Store new access token session
-	if err := uc.sessionRepo.SetAccessToken(ctx, newAccessToken, user.ID, auth.AccessTokenExpiration); err != nil {
+	if err := uc.sessionRepo.SetAccessToken(ctx, newAccessToken, user.ID, auth.GetAccessTokenExpiration()); err != nil {
 		return nil, err
 	}
 
 	// Store new refresh token mapping
-	if err := uc.sessionRepo.SetRefreshToken(ctx, newRefreshToken, newAccessToken, auth.RefreshTokenExpiration); err != nil {
+	if err := uc.sessionRepo.SetRefreshToken(ctx, newRefreshToken, newAccessToken, auth.GetRefreshTokenExpiration()); err != nil {
 		return nil, err
 	}
 

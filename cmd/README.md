@@ -17,18 +17,18 @@ cmd/
 
 Main REST API application server.
 
-Run Commands:
+**Run Commands:**
 ```bash
 make dev                # With hot reload (recommended)
 make run                # Without hot reload
 make build              # Build binary to bin/api
 ```
 
-Configuration:
+**Configuration:**
 - Uses environment variables from `.env` file
-- APP_PORT, DB_*, REDIS_*, JWT_SECRET
+- APP_PORT, DB_*, REDIS_*, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET
 
-Initialization Flow:
+**Initialization Flow:**
 1. Load configuration from environment
 2. Setup logger
 3. Connect to PostgreSQL database
@@ -108,21 +108,20 @@ func main() {
 
 CLI tool for code generation, development, testing, and deployment tasks.
 
-Access via Makefile:
+**Access via Makefile:**
 ```bash
-make help               # Show all available commands
-make gen-module product # Generate complete module
-make dev                # Start development server
-make test               # Run tests
-make migrate-up         # Run migrations
+make help                    # Show all available commands
+make gen-module name=product # Generate complete module
+make dev                     # Start development server
+make test                    # Run tests
+make migrate-up              # Run migrations
 ```
 
 ## Building Applications
 
-Build Commands:
+**Build Commands:**
 ```bash
 make build              # Build API binary
-make build-all          # Build all binaries (API, Seeder, CLI)
 ```
 
 Binaries created in `bin/` directory.
@@ -132,14 +131,14 @@ Binaries created in `bin/` directory.
 All development commands accessed through Makefile:
 
 ```bash
-make help               # Show all available commands
-make dev                # Start with hot reload
-make start              # Quick start (docker + migrate + dev)
-make gen-module name    # Generate complete module
-make test               # Run tests
-make migrate-up         # Run migrations
-make seed               # Seed database
-make docker-up          # Start containers
+make help                    # Show all available commands
+make dev                     # Start with hot reload
+make start                   # Quick start (docker + migrate + dev)
+make gen-module name=product # Generate complete module
+make test                    # Run tests
+make migrate-up              # Run migrations
+make seed                    # Seed database
+make docker-up               # Start containers
 ```
 
 See main README.md for complete command reference.

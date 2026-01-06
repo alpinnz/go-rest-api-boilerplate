@@ -98,22 +98,9 @@ This connects to database using configuration from `.env` file.
 ### Rollback Migrations
 
 Rollback all migrations:
-```bash
-make migrate down
 ```
 
-### Check Migration Status
-
-View migration files:
-```bash
-make migrate status
-```
-
-### Force Migration Version
-
-If migrations are in inconsistent state:
-```bash
-Migration Guidelines:
+## Migration Guidelines
 - Always create both up and down migrations
 - Test rollback before committing
 - Use transactions for data migrations

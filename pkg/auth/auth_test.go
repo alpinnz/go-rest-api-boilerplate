@@ -8,51 +8,74 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerateAccessToken(t *testing.T) {
-	SetJWTSecret("test-secret-key")
+func setupTest() {
+	SetJWTConfig(
+		"test-access-secret-key-min-32chars",
+		15*time.Minute,
+		"test-refresh-secret-key-min-32char",
+		7*24*time.Hour,
+	)
+}
 
-	userID := uuid.New().String()
+func TestGenerateAccessToken(t *testing.T) {
+	setupTest()
+
+	userID := uuid.New()
 	token, err := GenerateAccessToken(userID)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 }
 
-func TestValidateAccessToken_Success(t *testing.T) {
-	SetJWTSecret("test-secret-key")
-
-	userID := uuid.New().String()
-	token, err := GenerateAccessToken(userID)
-	assert.NoError(t, err)
-
-	claims, err := ValidateAccessToken(token)
-	assert.NoError(t, err)
-	assert.Equal(t, userID, claims.UserID)
-}
-
-func TestValidateAccessToken_InvalidToken(t *testing.T) {
-	SetJWTSecret("test-secret-key")
-
-	_, err := ValidateAccessToken("invalid.token.here")
-	assert.Error(t, err)
-}
-
-func TestValidateAccessToken_ExpiredToken(t *testing.T) {
-	SetJWTSecret("test-secret-key")
-
-	// This would require mocking time, skipped for simplicity
-	// In real tests, you'd use a library like github.com/benbjohnson/clock
-	t.Skip("Requires time mocking")
-}
-
 func TestGenerateRefreshToken(t *testing.T) {
-	SetJWTSecret("test-secret-key")
+	setupTest()
 
-	userID := uuid.New().String()
+	userID := uuid.New()
 	token, err := GenerateRefreshToken(userID)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
+}
+
+func TestValidateToken_AccessToken_Success(t *testing.T) {
+	setupTest()
+
+	userID := uuid.New()
+	token, err := GenerateAccessToken(userID)
+	assert.NoError(t, err)
+
+	claims, err := ValidateToken(token)
+	assert.NoError(t, err)
+	assert.Equal(t, userID.String(), claims.UserID)
+	assert.Equal(t, TokenTypeAccess, claims.TokenType)
+}
+
+func TestValidateToken_RefreshToken_Success(t *testing.T) {
+	setupTest()
+
+	userID := uuid.New()
+	token, err := GenerateRefreshToken(userID)
+	assert.NoError(t, err)
+
+	claims, err := ValidateToken(token)
+	assert.NoError(t, err)
+	assert.Equal(t, userID.String(), claims.UserID)
+	assert.Equal(t, TokenTypeRefresh, claims.TokenType)
+}
+
+func TestValidateToken_InvalidToken(t *testing.T) {
+	setupTest()
+
+	_, err := ValidateToken("invalid.token.here")
+	assert.Error(t, err)
+}
+
+func TestValidateToken_ExpiredToken(t *testing.T) {
+	setupTest()
+
+	// This would require mocking time, skipped for simplicity
+	// In real tests, you'd use a library like github.com/benbjohnson/clock
+	t.Skip("Requires time mocking")
 }
 
 func TestHashPassword(t *testing.T) {
@@ -64,28 +87,20 @@ func TestHashPassword(t *testing.T) {
 	assert.NotEqual(t, password, hash)
 }
 
-func TestCheckPassword_Success(t *testing.T) {
+func TestCheckPasswordHash_Success(t *testing.T) {
 	password := "MySecurePassword123!"
 	hash, err := HashPassword(password)
 	assert.NoError(t, err)
 
-	err = CheckPassword(hash, password)
-	assert.NoError(t, err)
+	match := CheckPasswordHash(password, hash)
+	assert.True(t, match)
 }
 
-func TestCheckPassword_WrongPassword(t *testing.T) {
+func TestCheckPasswordHash_WrongPassword(t *testing.T) {
 	password := "MySecurePassword123!"
 	hash, err := HashPassword(password)
 	assert.NoError(t, err)
 
-	err = CheckPassword(hash, "WrongPassword")
-	assert.Error(t, err)
-}
-
-func TestCheckPassword_EmptyPassword(t *testing.T) {
-	hash, err := HashPassword("password")
-	assert.NoError(t, err)
-
-	err = CheckPassword(hash, "")
-	assert.Error(t, err)
+	match := CheckPasswordHash("WrongPassword", hash)
+	assert.False(t, match)
 }

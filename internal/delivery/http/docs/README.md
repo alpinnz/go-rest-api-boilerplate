@@ -51,8 +51,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 ```
 
-## Note
+## Best Practices
 
-- `swagger.json` is gitignored as it's a generated file and should be regenerated in each environment
+- Regenerate `swagger.json` after adding or modifying API endpoints
+- Keep annotations up to date with implementation
+- Test documentation in Swagger UI before committing
+- `swagger.json` is gitignored and should be regenerated in each environment
 - `swagger.html` is committed to the repository as it's a static UI wrapper
 

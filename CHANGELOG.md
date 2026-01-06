@@ -8,17 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Makefile task runner with 50+ commands
-  - Code generation commands (gen-module, gen-handler, gen-repository, gen-service, gen-migration)
-  - Development commands (dev, run, build, build-all)
-  - Testing commands (test, test-verbose, test-coverage, fmt, lint, vet, mocks, check)
+- Separate JWT configuration for access and refresh tokens
+  - ACCESS_TOKEN_SECRET and ACCESS_TOKEN_EXPIRATION (default: 15m)
+  - REFRESH_TOKEN_SECRET and REFRESH_TOKEN_EXPIRATION (default: 168h/7 days)
+- GetAccessTokenExpiration() and GetRefreshTokenExpiration() helper functions
+- SetJWTConfig() function to configure both token types
+- Enhanced JWT validation with automatic secret selection based on token type
+- Makefile automation with essential commands
+  - Code generation commands (gen-module, gen-handler, gen-repository, gen-usecase, gen-migration)
+  - Development commands (dev, run, build)
+  - Testing commands (test, test-coverage, fmt, lint, vet, mocks, check)
   - Database commands (migrate-up, migrate-down, migrate-status, seed)
-  - Docker commands (docker-up, docker-down, docker-logs, docker-rebuild)
-  - Quick actions (start, stop, restart, status)
-  - Tool installation command
-  - CI/CD helpers (ci-lint, ci-test, ci-build, ci)
-- CLI tool using Cobra framework (accessed via Makefile)
-- Colored output in Makefile with help system
+  - Docker commands (docker-up, docker-down, docker-logs, docker-restart)
+  - Quick actions (start, stop)
+  - Tool installation command (install)
+- CLI tool using Cobra framework (used for code generation)
+- Colored output in Makefile with comprehensive help system
 - Self-documenting commands via `make help`
 - Production middleware implementation
   - Sanitize middleware for XSS protection (applied globally)
@@ -29,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Swagger API documentation in internal/delivery/http/docs/
 
 ### Changed
+- JWT configuration refactored from single JWT_SECRET to separate access/refresh token secrets
+- JWT expiration now configurable separately for access and refresh tokens
+- Updated all documentation to reflect new JWT configuration
 - Primary interface now uses Makefile task runner (no direct CLI binary usage)
 - All commands simplified: `make dev`, `make test`, `make gen-module product`
 - Updated GitHub Actions CI/CD workflow to use Makefile
@@ -41,6 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Import path for templates updated to cmd/cli/commands/generator/templates
 
 ### Removed
+- Single JWT_SECRET and JWT_EXPIRATION environment variables (replaced with separate access/refresh configs)
+- Hardcoded token expiration constants (now configurable via environment)
+- SetJWTSecret() function (replaced with SetJWTConfig())
 - Redundant documentation files (cmd/cli/README.md)
 - Duplicate workflow guides
 - RBAC middleware (redundant - role checking done at handler level)
@@ -177,7 +188,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - golangci-lint configuration
 - Makefile with comprehensive commands
 - Structured logging with Zerolog
-- Prometheus metrics
 
 #### Testing
 - Unit tests for pkg utilities

@@ -17,8 +17,16 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
+	// Configure database pool
+	poolConfig := database.PoolConfig{
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+		ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
+	}
+
 	// Connect to database
-	db, err := database.NewPostgresDB(cfg.Database.DSN())
+	db, err := database.NewPostgresDB(cfg.Database.DSN(), poolConfig)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}

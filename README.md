@@ -173,16 +173,15 @@ Design Decisions:
 ```bash
 make start           # Start docker + migrations + dev server
 make stop            # Stop all services
-make restart         # Restart everything
 ```
 
 ### Code Generation
 ```bash
-make gen-module product           # Generate complete module (all layers)
-make gen-handler user            # Generate handler only
-make gen-repository order        # Generate repository
-make gen-service auth            # Generate use case/service
-make gen-migration create_products  # Generate migration files
+make gen-module name=product      # Generate complete module (all layers)
+make gen-handler name=user        # Generate handler only
+make gen-repository name=order    # Generate repository
+make gen-usecase name=auth        # Generate use case
+make gen-migration name=create_products  # Generate migration files
 ```
 
 ### Running Application
@@ -190,13 +189,11 @@ make gen-migration create_products  # Generate migration files
 make dev                         # Run with hot reload (recommended)
 make run                         # Run without hot reload
 make build                       # Build API binary
-make build-all                   # Build all binaries (API, Seeder, CLI)
 ```
 
 ### Testing and Quality
 ```bash
 make test                        # Run all tests
-make test-verbose                # Verbose output
 make test-coverage               # Generate HTML coverage report
 make fmt                         # Format code
 make lint                        # Run linter
@@ -218,13 +215,13 @@ make seed                        # Seed database with initial data
 make docker-up                   # Start containers
 make docker-down                 # Stop containers
 make docker-logs                 # Show logs
-make docker-rebuild              # Rebuild and restart containers
+make docker-restart              # Restart containers
 ```
 
 ### Tools
 ```bash
 make install                     # Install development tools
-make status                      # Show project status
+make clean                       # Clean build artifacts
 make help                        # Show all available commands
 ```
 
@@ -352,21 +349,20 @@ Adding New Language:
 
 ## Testing
 
-Running Tests:
+**Running Tests:**
 ```bash
 make test                        # Run all tests
-make test-verbose                # Verbose output
 make test-coverage               # Generate HTML coverage report
 make mocks                       # Generate test mocks
 ```
 
-Test Structure:
-- Unit Tests: `pkg/*/` (pagination, validator, auth)
-- Repository Tests: `internal/repository/`
-- Use Case Tests: `internal/usecase/` (with mocked repositories)
-- Handler Tests: `internal/delivery/http/handler/`
+**Test Structure:**
+- **Unit Tests:** `pkg/*/` (pagination, validator, auth)
+- **Repository Tests:** `internal/repository/`
+- **Use Case Tests:** `internal/usecase/` (with mocked repositories)
+- **Handler Tests:** `internal/delivery/http/handler/`
 
-Coverage Goals:
+**Coverage Goals:**
 - Unit Tests: > 80%
 - Integration Tests: Critical user flows
 - Handler Tests: All endpoints
@@ -422,8 +418,10 @@ REDIS_PASSWORD=
 REDIS_DB=0
 
 # JWT
-JWT_SECRET=change-this-secret-key
-JWT_EXPIRATION=24h
+ACCESS_TOKEN_SECRET=change-this-access-token-secret-key
+ACCESS_TOKEN_EXPIRATION=15m
+REFRESH_TOKEN_SECRET=change-this-refresh-token-secret-key
+REFRESH_TOKEN_EXPIRATION=168h
 
 # Server
 READ_TIMEOUT=10s
@@ -433,10 +431,12 @@ SHUTDOWN_TIMEOUT=5s
 
 Session Management:
 - Sessions stored in Redis for fast access
-- Automatic expiration based on JWT_EXPIRATION
-- Login: Generate JWT token, store in Redis with user ID
-- Request: Validate token from Redis, extract user ID
-- Logout: Delete token from Redis (immediate invalidation)
+- Access tokens expire based on ACCESS_TOKEN_EXPIRATION (default: 15m)
+- Refresh tokens expire based on REFRESH_TOKEN_EXPIRATION (default: 168h/7 days)
+- Login: Generate access & refresh tokens, store in Redis
+- Request: Validate access token from Redis, extract user ID
+- Logout: Delete tokens from Redis (immediate invalidation)
+- Refresh: Generate new token pair using valid refresh token
 
 ## Docker
 
@@ -446,12 +446,12 @@ The API container:
 - Connects to external PostgreSQL and Redis
 - Includes all application dependencies
 
-Commands:
+**Commands:**
 ```bash
 make docker-up                   # Start API container
 make docker-down                 # Stop API container
-make docker-logs                 # Check logs
-make docker-rebuild              # Rebuild and restart
+make docker-logs                 # View container logs
+make docker-restart              # Restart container
 ```
 
 Note: PostgreSQL and Redis run externally (locally or cloud). Use `host.docker.internal` on macOS/Windows for DB_HOST/REDIS_HOST.
@@ -460,12 +460,12 @@ Note: PostgreSQL and Redis run externally (locally or cloud). Use `host.docker.i
 
 Uses golang-migrate tool with .env configuration.
 
-Commands:
+**Commands:**
 ```bash
-make migrate-up                  # Run all migrations
-make migrate-down                # Rollback all migrations
-make migrate-status              # Show migration status
-make gen-migration add_user_avatar  # Create new migration
+make migrate-up                     # Run all migrations
+make migrate-down                   # Rollback last migration
+make migrate-status                 # Show migration status
+make gen-migration name=add_user_avatar  # Create new migration
 ```
 
 Current Schema:
@@ -585,7 +585,9 @@ logger.WithFields(map[string]interface{}{
 
 ## Contributing
 
-Development Workflow:
+### Development Workflow
+
+**Setup:**
 ```bash
 # Fork and clone repository
 git clone https://github.com/YOUR_USERNAME/go-rest-api-boilerplate.git
@@ -603,26 +605,52 @@ git commit -m "feat(scope): add new feature"
 git push origin feat/new-feature
 ```
 
-Branch Naming: `<type>/<description>`
+### Branch Naming
+
+Format: `<type>/<description>`
+
+Examples:
 - `feat/add-user-profile` - New feature
 - `fix/jwt-expiration-bug` - Bug fix
 - `docs/update-readme` - Documentation
+- `refactor/cleanup-handlers` - Code refactoring
+- `test/add-unit-tests` - Tests
 
-Commit Convention: `<type>(<scope>): <subject>`
+### Commit Convention
 
-Types: feat, fix, docs, style, refactor, test, chore
+Format: `<type>(<scope>): <subject>`
 
-Examples:
+**Types:**
+- `feat` - New feature
+- `fix` - Bug fix
+- `docs` - Documentation changes
+- `style` - Code style changes (formatting, etc.)
+- `refactor` - Code refactoring
+- `test` - Adding or updating tests
+- `chore` - Maintenance tasks
+
+**Examples:**
 ```bash
-feat(auth): add JWT refresh token
-fix(user): handle null email
-docs: update API endpoints
+feat(auth): add JWT refresh token support
+fix(user): handle null email in validation
+docs: update API endpoints documentation
+refactor(handler): simplify error handling
+test(repository): add user repository tests
 ```
 
-Code Style:
-- Run `make check` before commit (fmt, vet, lint, test)
+### Code Quality
+
+Before committing:
+```bash
+make check    # Runs fmt, vet, lint, and tests
+```
+
+**Requirements:**
+- Run `make check` before commit
 - Document all exported functions
 - Add tests for new features
+- Update documentation
+- Follow existing code style
 
 ## License
 

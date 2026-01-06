@@ -15,16 +15,14 @@ const (
 	TokenTypeRefresh = "refresh"
 )
 
-// Token expiration durations
-const (
-	AccessTokenExpiration  = 15 * time.Minute   // 15 minutes
-	RefreshTokenExpiration = 7 * 24 * time.Hour // 7 days
+// JWT secrets and expiration durations
+// Should be set via SetJWTConfig during application initialization.
+var (
+	accessTokenSecret      = []byte("change-this-access-token-secret-key")
+	accessTokenExpiration  = 15 * time.Minute // 15 minutes
+	refreshTokenSecret     = []byte("change-this-refresh-token-secret-key")
+	refreshTokenExpiration = 7 * 24 * time.Hour // 7 days
 )
-
-// jwtSecret holds the secret key used for signing JWT tokens.
-// Should be set via SetJWTSecret during application initialization.
-// Default value is placeholder and MUST be changed in production.
-var jwtSecret = []byte("change-this-secret-key")
 
 // Claims represents JWT token claims including user identity and token type.
 // Embeds jwt.RegisteredClaims for standard claims (exp, iat, etc.).
@@ -34,19 +32,35 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// SetJWTSecret configures the secret key used for signing JWT tokens.
+// SetJWTConfig configures the secrets and expirations for JWT tokens.
 // Must be called during application initialization before generating tokens.
-// Secret should be loaded from environment variables, never hardcoded.
+// Secrets should be loaded from environment variables, never hardcoded.
 //
 // Example:
 //
-//	auth.SetJWTSecret(os.Getenv("JWT_SECRET"))
-func SetJWTSecret(secret string) {
-	jwtSecret = []byte(secret)
+//	auth.SetJWTConfig(
+//	    cfg.JWT.AccessTokenSecret, cfg.JWT.AccessTokenExpiration,
+//	    cfg.JWT.RefreshTokenSecret, cfg.JWT.RefreshTokenExpiration,
+//	)
+func SetJWTConfig(accessSecret string, accessExp time.Duration, refreshSecret string, refreshExp time.Duration) {
+	accessTokenSecret = []byte(accessSecret)
+	accessTokenExpiration = accessExp
+	refreshTokenSecret = []byte(refreshSecret)
+	refreshTokenExpiration = refreshExp
+}
+
+// GetAccessTokenExpiration returns the configured access token expiration duration.
+func GetAccessTokenExpiration() time.Duration {
+	return accessTokenExpiration
+}
+
+// GetRefreshTokenExpiration returns the configured refresh token expiration duration.
+func GetRefreshTokenExpiration() time.Duration {
+	return refreshTokenExpiration
 }
 
 // GenerateToken creates a new JWT access token for authenticated user.
-// Token expires after 15 minutes from creation.
+// Token expires based on configured ACCESS_TOKEN_EXPIRATION.
 // Uses HMAC-SHA256 algorithm for signing.
 // Returns signed token string or error if signing fails.
 //
@@ -58,23 +72,23 @@ func SetJWTSecret(secret string) {
 //	}
 //	// Use token in Authorization header: Bearer <token>
 func GenerateToken(userID uuid.UUID) (string, error) {
-	return generateTokenWithType(userID, TokenTypeAccess, AccessTokenExpiration)
+	return generateTokenWithType(userID, TokenTypeAccess, accessTokenExpiration, accessTokenSecret)
 }
 
 // GenerateAccessToken creates a new JWT access token (short-lived).
-// Token expires after 15 minutes.
+// Token expires based on configured ACCESS_TOKEN_EXPIRATION.
 func GenerateAccessToken(userID uuid.UUID) (string, error) {
-	return generateTokenWithType(userID, TokenTypeAccess, AccessTokenExpiration)
+	return generateTokenWithType(userID, TokenTypeAccess, accessTokenExpiration, accessTokenSecret)
 }
 
 // GenerateRefreshToken creates a new JWT refresh token (long-lived).
-// Token expires after 7 days.
+// Token expires based on configured REFRESH_TOKEN_EXPIRATION.
 func GenerateRefreshToken(userID uuid.UUID) (string, error) {
-	return generateTokenWithType(userID, TokenTypeRefresh, RefreshTokenExpiration)
+	return generateTokenWithType(userID, TokenTypeRefresh, refreshTokenExpiration, refreshTokenSecret)
 }
 
-// generateTokenWithType creates a JWT token with specified type and expiration.
-func generateTokenWithType(userID uuid.UUID, tokenType string, expiration time.Duration) (string, error) {
+// generateTokenWithType creates a JWT token with specified type, expiration, and secret.
+func generateTokenWithType(userID uuid.UUID, tokenType string, expiration time.Duration, secret []byte) (string, error) {
 	claims := Claims{
 		UserID:    userID.String(),
 		TokenType: tokenType,
@@ -85,11 +99,12 @@ func generateTokenWithType(userID uuid.UUID, tokenType string, expiration time.D
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(secret)
 }
 
 // ValidateToken verifies JWT token signature and extracts claims.
 // Validates signing method, token signature, and expiration.
+// Uses appropriate secret (access or refresh) based on token type.
 // Returns parsed claims or error if validation fails.
 //
 // Possible errors:
@@ -105,11 +120,23 @@ func generateTokenWithType(userID uuid.UUID, tokenType string, expiration time.D
 //	}
 //	userID := claims.UserID
 func ValidateToken(tokenString string) (*Claims, error) {
+	// First parse without validation to get token type
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("invalid signing method")
 		}
-		return jwtSecret, nil
+
+		// Get claims to determine token type
+		claims, ok := token.Claims.(*Claims)
+		if !ok {
+			return nil, errors.New("invalid token claims")
+		}
+
+		// Use appropriate secret based on token type
+		if claims.TokenType == TokenTypeRefresh {
+			return refreshTokenSecret, nil
+		}
+		return accessTokenSecret, nil
 	})
 
 	if err != nil {

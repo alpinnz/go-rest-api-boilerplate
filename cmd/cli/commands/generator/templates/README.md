@@ -31,7 +31,7 @@ Templates are used automatically by the CLI generator via Makefile:
 
 ```bash
 # Generate complete module (6 files)
-make gen-module product
+make gen-module name=product
 
 # Creates:
 # - internal/domain/entity/product.go
@@ -42,10 +42,10 @@ make gen-module product
 # - internal/delivery/http/handler/product_handler.go
 
 # Generate individual components
-make gen-handler user
-make gen-repository order
-make gen-service payment
-make gen-migration create_table_products
+make gen-handler name=user
+make gen-repository name=order
+make gen-usecase name=payment
+make gen-migration name=create_table_products
 ```
 
 ## Placeholder Pattern
@@ -71,32 +71,35 @@ To customize templates for your project:
 
 Templates are read by the CLI tool during code generation.
 
-## Template Exclusion from gofmt
+## Template Files
 
 Template files use `.tmpl` extension to:
-- Prevent package conflicts (each declares different package names)
-- Avoid gofmt errors (intentional multi-package in one directory)
-- Clearly identify as template files, not compiled code
+- Prevent package conflicts (templates contain placeholder code)
+- Avoid compilation errors during go build
+- Clearly identify as template files, not source code
+- Enable proper embedding via `//go:embed` directives
 
 The CLI generator reads `.tmpl` files and generates proper `.go` files in their respective directories.
 
 ## Best Practices
 
-Naming Conventions:
+**Naming Conventions:**
 - Entity: Singular, PascalCase (User, Product, Order)
 - Repository: EntityRepository (UserRepository)
 - Use Case: EntityUseCase (UserUseCase)
 - Handler: EntityHandler (UserHandler)
 - DTO: EntityRequest/EntityResponse (CreateUserRequest)
 
-File Organization:
+**File Organization:**
 ```
 internal/
-  domain/entity/product.go
-  domain/repository/product_repository.go
-  repository/product_repository.go
-  usecase/product_usecase.go
-  delivery/http/handler/product_handler.go
-  delivery/http/dto/product_dto.go
+├── domain/
+│   ├── entity/product.go
+│   └── repository/product_repository.go
+├── repository/product_repository.go
+├── usecase/product_usecase.go
+└── delivery/http/
+    ├── dto/product_dto.go
+    └── handler/product_handler.go
 ```
 

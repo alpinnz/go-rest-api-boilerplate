@@ -156,28 +156,42 @@ err := database.WithTransaction(ctx, db, func(ctx context.Context, tx *sql.Tx) e
 
 ## Adding New Features
 
-1. Define entity in domain/entity/
-2. Define repository interface in domain/repository/
-3. Implement repository in repository/
-4. Create use case in usecase/
-5. Create DTOs in delivery/http/dto/
-6. Create handler in delivery/http/handler/
-7. Register routes in delivery/http/router/
+**Manual approach:**
+1. Define entity in `domain/entity/`
+2. Define repository interface in `domain/repository/`
+3. Implement repository in `repository/`
+4. Create use case in `usecase/`
+5. Create DTOs in `delivery/http/dto/`
+6. Create handler in `delivery/http/handler/`
+7. Register routes in `delivery/http/router/`
 
-Or use code generator:
+**Automated approach:**
 ```bash
-make gen-module product  # Generates all layers at once
+make gen-module name=product  # Generates all layers at once
 ```
+
+This creates:
+- Entity, repository interface, repository implementation
+- Use case with business logic
+- Handler with CRUD operations
+- DTOs for requests and responses
 
 ## Testing
 
-Each layer has corresponding tests:
-- usecase/ - Use case tests with mocked repositories
-- repository/ - Repository integration tests
-- delivery/http/handler/ - Handler tests
+Each layer has corresponding tests following the project structure:
 
-Generate mocks:
+**Test locations:**
+- `usecase/` - Use case tests with mocked repositories
+- `repository/` - Repository integration tests with test database
+- `delivery/http/handler/` - Handler tests with mocked use cases
+
+**Generate mocks:**
 ```bash
 make mocks  # Mocks available in domain/repository/mocks/
 ```
 
+**Run tests:**
+```bash
+make test           # All tests
+make test-coverage  # Coverage report
+```

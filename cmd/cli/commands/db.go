@@ -59,7 +59,7 @@ var migrateStatusCmd = &cobra.Command{
 	Short: "Show migration status",
 	Long:  `Show all migration files.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Migration files:\n")
+		fmt.Println("Migration files:")
 
 		statusCmd := exec.Command("make", "migrate-status")
 		statusCmd.Stdout = os.Stdout

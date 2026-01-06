@@ -20,21 +20,30 @@ pkg/
 
 ### auth
 
-JWT token management and password hashing.
+JWT token management and password hashing with separate access and refresh token support.
 
 Usage:
 ```go
-// Generate JWT token
-token, err := auth.GenerateToken(userID, secret, expiration)
+// Configure JWT settings (at app initialization)
+auth.SetJWTConfig(
+    accessSecret, accessExpiration,
+    refreshSecret, refreshExpiration,
+)
 
-// Validate token
-claims, err := auth.ValidateToken(token, secret)
+// Generate access token (short-lived)
+accessToken, err := auth.GenerateAccessToken(userID)
+
+// Generate refresh token (long-lived)
+refreshToken, err := auth.GenerateRefreshToken(userID)
+
+// Validate token (automatically uses correct secret based on token type)
+claims, err := auth.ValidateToken(token)
 
 // Hash password
 hashedPassword, err := auth.HashPassword(password)
 
 // Verify password
-err := auth.VerifyPassword(hashedPassword, password)
+match := auth.CheckPasswordHash(password, hashedPassword)
 ```
 
 ### context
@@ -197,24 +206,32 @@ Built-in Validations: required, email, min, max, len, uuid, oneof
 
 Run package tests:
 ```bash
-go test ./pkg/...              # All packages
-go test -v ./pkg/pagination/   # Specific package
-go test -cover ./pkg/...       # With coverage
+make test                      # All tests including packages
+go test ./pkg/...              # Package tests only
+go test -v ./pkg/pagination/   # Specific package with verbose output
+go test -cover ./pkg/...       # With coverage report
 ```
+
+**Test files:**
+- `pkg/auth/auth_test.go`
+- `pkg/errors/errors_test.go`
+- `pkg/pagination/pagination_test.go`
+- `pkg/validator/validator_test.go`
 
 ## Design Principles
 
-Independence:
+**Independence:**
 - No dependencies on internal packages
 - Can be used in other projects
 - Clear, simple interfaces
 
-Single Responsibility:
+**Single Responsibility:**
 - Each package has one well-defined purpose
+- Focused functionality
 
-No Side Effects:
+**No Side Effects:**
 - Predictable behavior
 - Easy to test
 - No global state
-
+- Pure functions where possible
 
