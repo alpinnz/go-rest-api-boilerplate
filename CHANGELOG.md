@@ -49,6 +49,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Code generator templates moved to cmd/cli/commands/generator/templates/
 - Documentation for generator package and templates
 - Swagger API documentation in internal/delivery/http/docs/
+- Swagger schemes annotation (http/https) for proper baseUrl configuration
+- Swagger UI auto token management with Bearer Token authorization
+  - Auto-save tokens after login/refresh
+  - Auto-authorize Swagger's "Authorize" button with Bearer token
+  - Auto-inject access token in Authorization header (Bearer {access_token})
+  - Auto-fill refresh_token in request body
+  - Auto-clear tokens on logout from localStorage and Swagger authorization
+  - Visual token status indicator
+  - Helper buttons (Show Tokens, Clear Tokens)
+  - Info banner with usage instructions
+  - Integration with Swagger's built-in security scheme (BearerAuth)
 
 ### Changed
 - JWT configuration refactored from single JWT_SECRET to separate access/refresh token secrets

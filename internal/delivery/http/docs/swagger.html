@@ -31,8 +31,23 @@
     <script src="https://unpkg.com/swagger-ui-dist@5.10.5/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
     <script>
         window.onload = function() {
+            // Configuration variables
+            const base_url = window.location.origin; // Use current origin as base_url
+            const access_token_key = 'access_token';
+            const refresh_token_key = 'refresh_token';
+
+            // Function to update Swagger authorization with access token
+            function updateSwaggerAuth() {
+                const access_token = localStorage.getItem(access_token_key);
+                if (access_token && window.ui) {
+                    window.ui.preauthorizeApiKey('BearerAuth', 'Bearer ' + access_token);
+                    console.log('✓ Swagger authorization updated with access_token');
+                    console.log('✓ Using base_url: ' + base_url);
+                }
+            }
+
             const ui = SwaggerUIBundle({
-                url: "/docs/swagger.json",
+                url: base_url + "/docs/swagger.json",
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [
@@ -42,10 +57,195 @@
                 plugins: [
                     SwaggerUIBundle.plugins.DownloadUrl
                 ],
-                layout: "StandaloneLayout"
+                layout: "StandaloneLayout",
+                onComplete: function() {
+                    // Auto-authorize with saved access token when Swagger UI loads
+                    updateSwaggerAuth();
+                },
+                requestInterceptor: (req) => {
+                    // Ensure access token is always in Authorization header
+                    const access_token = localStorage.getItem(access_token_key);
+                    if (access_token && req.url.indexOf('/auth/login') === -1 && req.url.indexOf('/auth/register') === -1) {
+                        req.headers['Authorization'] = 'Bearer ' + access_token;
+                    }
+
+                    // Auto-inject refresh_token in request body for refresh-token endpoint
+                    if (req.url.indexOf('/auth/refresh-token') !== -1 && req.method === 'POST') {
+                        try {
+                            const refresh_token = localStorage.getItem(refresh_token_key);
+                            if (refresh_token) {
+                                const body = JSON.parse(req.body);
+                                // Only auto-fill if refresh_token is empty or not provided
+                                if (!body.refresh_token) {
+                                    body.refresh_token = refresh_token;
+                                    req.body = JSON.stringify(body);
+                                    console.log('✓ Auto-filled refresh_token in request');
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Failed to auto-fill refresh_token:', e);
+                        }
+                    }
+
+                    return req;
+                },
+                responseInterceptor: (res) => {
+                    // Auto-save tokens after login or refresh
+                    if (res.url.indexOf('/auth/login') !== -1 || res.url.indexOf('/auth/refresh-token') !== -1) {
+                        try {
+                            const data = JSON.parse(res.text);
+                            if (data.data && data.data.access_token) {
+                                localStorage.setItem(access_token_key, data.data.access_token);
+                                console.log('✓ access_token saved to localStorage');
+
+                                // Auto-authorize Swagger with new token
+                                updateSwaggerAuth();
+
+                                // Show success notification
+                                const notification = document.createElement('div');
+                                notification.style.cssText = 'position:fixed;top:20px;right:20px;background:#4CAF50;color:white;padding:15px 20px;border-radius:4px;z-index:9999;box-shadow:0 2px 5px rgba(0,0,0,0.2);font-family:sans-serif;';
+                                notification.innerHTML = '<strong>✓ Token Saved!</strong><br>access_token saved and authorized.<br>Ready to test protected endpoints.';
+                                document.body.appendChild(notification);
+                                setTimeout(() => notification.remove(), 4000);
+
+                                // Update status indicator
+                                const status = document.getElementById('token-status');
+                                if (status) {
+                                    status.style.background = '#4CAF50';
+                                    status.textContent = '● Authenticated';
+                                }
+                            }
+                            if (data.data && data.data.refresh_token) {
+                                localStorage.setItem(refresh_token_key, data.data.refresh_token);
+                                console.log('✓ refresh_token saved to localStorage');
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse response:', e);
+                        }
+                    }
+
+                    // Clear tokens on logout
+                    if (res.url.indexOf('/auth/logout') !== -1) {
+                        localStorage.removeItem(access_token_key);
+                        localStorage.removeItem(refresh_token_key);
+                        console.log('✓ Tokens cleared from localStorage after logout');
+
+                        // Clear Swagger authorization
+                        if (window.ui) {
+                            window.ui.preauthorizeApiKey('BearerAuth', '');
+                        }
+
+                        const notification = document.createElement('div');
+                        notification.style.cssText = 'position:fixed;top:20px;right:20px;background:#FF9800;color:white;padding:15px 20px;border-radius:4px;z-index:9999;box-shadow:0 2px 5px rgba(0,0,0,0.2);font-family:sans-serif;';
+                        notification.textContent = '✓ Logged out. Tokens cleared from localStorage.';
+                        document.body.appendChild(notification);
+                        setTimeout(() => notification.remove(), 3000);
+
+                        // Update status indicator
+                        const status = document.getElementById('token-status');
+                        if (status) {
+                            status.style.background = '#757575';
+                            status.textContent = '○ Not Authenticated';
+                        }
+                    }
+
+                    return res;
+                }
             });
 
             window.ui = ui;
+
+            // Add helper buttons and info to UI
+            setTimeout(() => {
+                const topbar = document.querySelector('.topbar');
+                if (topbar) {
+                    const btnContainer = document.createElement('div');
+                    btnContainer.style.cssText = 'display:flex;gap:10px;align-items:center;margin-left:auto;';
+
+                    // Token status indicator
+                    const statusIndicator = document.createElement('div');
+                    const hasToken = localStorage.getItem(access_token_key);
+                    statusIndicator.style.cssText = 'padding:8px 12px;background:' + (hasToken ? '#4CAF50' : '#757575') + ';color:white;border-radius:4px;font-size:13px;font-weight:500;';
+                    statusIndicator.textContent = hasToken ? '● Authenticated' : '○ Not Authenticated';
+                    statusIndicator.id = 'token-status';
+
+                    // Show Token button
+                    const showTokenBtn = document.createElement('button');
+                    showTokenBtn.textContent = 'Show Tokens';
+                    showTokenBtn.style.cssText = 'padding:8px 15px;background:#2196F3;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:500;transition:background 0.3s;';
+                    showTokenBtn.onmouseover = () => showTokenBtn.style.background = '#1976D2';
+                    showTokenBtn.onmouseout = () => showTokenBtn.style.background = '#2196F3';
+                    showTokenBtn.onclick = () => {
+                        const access_token = localStorage.getItem(access_token_key);
+                        const refresh_token = localStorage.getItem(refresh_token_key);
+                        const message = 'access_token:\n' + (access_token || '(Not set)') + '\n\n' +
+                                       'refresh_token:\n' + (refresh_token || '(Not set)') + '\n\n' +
+                                       'base_url:\n' + base_url;
+                        alert(message);
+                    };
+
+                    // Clear Token button
+                    const clearTokenBtn = document.createElement('button');
+                    clearTokenBtn.textContent = 'Clear Tokens';
+                    clearTokenBtn.style.cssText = 'padding:8px 15px;background:#f44336;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:500;transition:background 0.3s;';
+                    clearTokenBtn.onmouseover = () => clearTokenBtn.style.background = '#d32f2f';
+                    clearTokenBtn.onmouseout = () => clearTokenBtn.style.background = '#f44336';
+                    clearTokenBtn.onclick = () => {
+                        if (confirm('Clear all saved tokens?')) {
+                            localStorage.removeItem(access_token_key);
+                            localStorage.removeItem(refresh_token_key);
+
+                            // Clear Swagger authorization
+                            if (window.ui) {
+                                window.ui.preauthorizeApiKey('BearerAuth', '');
+                            }
+
+                            alert('✓ Tokens cleared from localStorage');
+                            console.log('✓ Tokens cleared');
+
+                            // Update status indicator
+                            const status = document.getElementById('token-status');
+                            if (status) {
+                                status.style.background = '#757575';
+                                status.textContent = '○ Not Authenticated';
+                            }
+                        }
+                    };
+
+                    btnContainer.appendChild(statusIndicator);
+                    btnContainer.appendChild(showTokenBtn);
+                    btnContainer.appendChild(clearTokenBtn);
+                    topbar.appendChild(btnContainer);
+                }
+
+                // Add info banner
+                const infoSection = document.querySelector('.information-container');
+                if (infoSection) {
+                    const infoBanner = document.createElement('div');
+                    infoBanner.style.cssText = 'background:#E3F2FD;border-left:4px solid #2196F3;padding:15px;margin:20px 0;border-radius:4px;';
+                    infoBanner.innerHTML = `
+                        <strong style="color:#1976D2;font-size:16px;">🔐 Auto Token Management with Bearer Authorization</strong>
+                        <div style="margin:10px 0;padding:10px;background:#fff;border-radius:4px;border:1px solid #BBD;font-family:monospace;font-size:13px;">
+                            <strong>Variables:</strong><br>
+                            • <code>base_url</code> = ${base_url}<br>
+                            • <code>access_token</code> = Bearer token from localStorage<br>
+                            • <code>refresh_token</code> = Refresh token from localStorage
+                        </div>
+                        <ul style="margin:10px 0;padding-left:20px;color:#555;">
+                            <li><strong>Login/Register</strong> → <code>access_token</code> & <code>refresh_token</code> saved to localStorage</li>
+                            <li><strong>Auto-Authorization</strong> → Swagger "Authorize" button filled with Bearer <code>access_token</code></li>
+                            <li><strong>Protected Endpoints</strong> → Header: <code>Authorization: Bearer {access_token}</code></li>
+                            <li><strong>Refresh Token</strong> → Auto-fills <code>refresh_token</code> field from localStorage</li>
+                            <li><strong>Logout</strong> → Clears <code>access_token</code> & <code>refresh_token</code> from localStorage</li>
+                        </ul>
+                        <div style="font-size:13px;color:#666;margin-top:10px;">
+                            <strong>Note:</strong> All endpoints with 🔒 icon use Bearer Token authentication.
+                            Use "Show Tokens" button to view current <code>access_token</code>, <code>refresh_token</code>, and <code>base_url</code> values.
+                        </div>
+                    `;
+                    infoSection.insertBefore(infoBanner, infoSection.firstChild);
+                }
+            }, 1000);
         };
     </script>
 </body>
