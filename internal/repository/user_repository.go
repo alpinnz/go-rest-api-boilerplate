@@ -9,7 +9,6 @@ import (
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain/entity"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain/repository"
 	"github.com/google/uuid"
-	_ "github.com/lib/pq"
 )
 
 type userRepository struct {

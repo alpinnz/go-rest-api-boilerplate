@@ -2,104 +2,117 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
+	"log"
 
+	"github.com/alpinnz/go-rest-api-boilerplate/config"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/infrastructure/database"
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/migration"
 	"github.com/spf13/cobra"
 )
 
-var migrateCmd = &cobra.Command{
-	Use:   "migrate",
-	Short: "Database migration commands",
-	Long:  `Manage database migrations.`,
+var dbCmd = &cobra.Command{
+	Use:   "db",
+	Short: "Database management commands",
+	Long:  `Manage database migrations and seeding.`,
 }
 
 var migrateUpCmd = &cobra.Command{
-	Use:   "up",
+	Use:   "migrate-up",
 	Short: "Run all pending migrations",
 	Long:  `Apply all pending database migrations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Running migrations...")
 
-		migrateCmd := exec.Command("make", "migrate-up")
-		migrateCmd.Stdout = os.Stdout
-		migrateCmd.Stderr = os.Stderr
-
-		if err := migrateCmd.Run(); err != nil {
-			fmt.Println("Migration failed")
-			os.Exit(1)
+		cfg, err := config.Load()
+		if err != nil {
+			log.Fatalf("Failed to load config: %v", err)
 		}
 
-		fmt.Println("✓ Migrations completed")
+		poolConfig := database.PoolConfig{
+			MaxOpenConns:    cfg.Database.MaxOpenConns,
+			MaxIdleConns:    cfg.Database.MaxIdleConns,
+			ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+			ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
+		}
+
+		db, err := database.NewPostgresDB(cfg.Database.DSN(), poolConfig)
+		if err != nil {
+			log.Fatalf("Failed to connect to database: %v", err)
+		}
+		defer db.Close()
+
+		runner := migration.NewRunner(db, "migrations")
+		if err := runner.Up(); err != nil {
+			log.Fatalf("Migration failed: %v", err)
+		}
 	},
 }
 
 var migrateDownCmd = &cobra.Command{
-	Use:   "down",
-	Short: "Rollback all migrations",
-	Long:  `Rollback all database migrations.`,
+	Use:   "migrate-down",
+	Short: "Rollback last migration",
+	Long:  `Rollback the last applied database migration.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Rolling back migrations...")
+		fmt.Println("Rolling back last migration...")
 
-		migrateCmd := exec.Command("make", "migrate-down")
-		migrateCmd.Stdout = os.Stdout
-		migrateCmd.Stderr = os.Stderr
-
-		if err := migrateCmd.Run(); err != nil {
-			fmt.Println("Rollback failed")
-			os.Exit(1)
+		cfg, err := config.Load()
+		if err != nil {
+			log.Fatalf("Failed to load config: %v", err)
 		}
 
-		fmt.Println("✓ Rollback completed")
+		poolConfig := database.PoolConfig{
+			MaxOpenConns:    cfg.Database.MaxOpenConns,
+			MaxIdleConns:    cfg.Database.MaxIdleConns,
+			ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+			ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
+		}
+
+		db, err := database.NewPostgresDB(cfg.Database.DSN(), poolConfig)
+		if err != nil {
+			log.Fatalf("Failed to connect to database: %v", err)
+		}
+		defer db.Close()
+
+		runner := migration.NewRunner(db, "migrations")
+		if err := runner.Down(); err != nil {
+			log.Fatalf("Rollback failed: %v", err)
+		}
 	},
 }
 
 var migrateStatusCmd = &cobra.Command{
-	Use:   "status",
+	Use:   "migrate-status",
 	Short: "Show migration status",
-	Long:  `Show all migration files.`,
+	Long:  `Show status of all migrations.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Migration files:")
-
-		statusCmd := exec.Command("make", "migrate-status")
-		statusCmd.Stdout = os.Stdout
-		statusCmd.Stderr = os.Stderr
-
-		if err := statusCmd.Run(); err != nil {
-			os.Exit(1)
-		}
-	},
-}
-
-var seedCmd = &cobra.Command{
-	Use:   "seed",
-	Short: "Seed the database",
-	Long:  `Run database seeder to populate initial data.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Seeding database...")
-
-		seedCmd := exec.Command("make", "seed")
-		seedCmd.Stdout = os.Stdout
-		seedCmd.Stderr = os.Stderr
-
-		if err := seedCmd.Run(); err != nil {
-			fmt.Println("Seeding failed")
-			os.Exit(1)
+		cfg, err := config.Load()
+		if err != nil {
+			log.Fatalf("Failed to load config: %v", err)
 		}
 
-		fmt.Println("\n✓ Database seeded successfully")
-		fmt.Println("\nDefault users created:")
-		fmt.Println("  - admin@example.com / !Password123 (admin)")
-		fmt.Println("  - user@example.com / !Password123 (user)")
-		fmt.Println("  - test@example.com / !Password123 (user + moderator)")
+		poolConfig := database.PoolConfig{
+			MaxOpenConns:    cfg.Database.MaxOpenConns,
+			MaxIdleConns:    cfg.Database.MaxIdleConns,
+			ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+			ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
+		}
+
+		db, err := database.NewPostgresDB(cfg.Database.DSN(), poolConfig)
+		if err != nil {
+			log.Fatalf("Failed to connect to database: %v", err)
+		}
+		defer db.Close()
+
+		runner := migration.NewRunner(db, "migrations")
+		if err := runner.Status(); err != nil {
+			log.Fatalf("Failed to get status: %v", err)
+		}
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(migrateCmd)
-	rootCmd.AddCommand(seedCmd)
-
-	migrateCmd.AddCommand(migrateUpCmd)
-	migrateCmd.AddCommand(migrateDownCmd)
-	migrateCmd.AddCommand(migrateStatusCmd)
+	rootCmd.AddCommand(dbCmd)
+	dbCmd.AddCommand(migrateUpCmd)
+	dbCmd.AddCommand(migrateDownCmd)
+	dbCmd.AddCommand(migrateStatusCmd)
 }

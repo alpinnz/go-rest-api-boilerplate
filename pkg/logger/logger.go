@@ -1,3 +1,5 @@
+// Package logger provides a thin wrapper around zerolog to standardize structured
+// logging across the project, and convenience helpers for common logging patterns.
 package logger
 
 import (
@@ -101,24 +103,24 @@ func parseLevel(level string) zerolog.Level {
 
 // Logging methods
 
-func (l *Logger) Debug(msg string) {
-	l.logger.Debug().Msg(msg)
+func (l *Logger) Debug() *zerolog.Event {
+	return l.logger.Debug()
 }
 
-func (l *Logger) Info(msg string) {
-	l.logger.Info().Msg(msg)
+func (l *Logger) Info() *zerolog.Event {
+	return l.logger.Info()
 }
 
-func (l *Logger) Warn(msg string) {
-	l.logger.Warn().Msg(msg)
+func (l *Logger) Warn() *zerolog.Event {
+	return l.logger.Warn()
 }
 
-func (l *Logger) Error(msg string) {
-	l.logger.Error().Msg(msg)
+func (l *Logger) Error() *zerolog.Event {
+	return l.logger.Error()
 }
 
-func (l *Logger) Fatal(msg string) {
-	l.logger.Fatal().Msg(msg)
+func (l *Logger) Fatal() *zerolog.Event {
+	return l.logger.Fatal()
 }
 
 // With fields

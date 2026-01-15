@@ -1,3 +1,7 @@
+// Package context provides small helpers for storing and retrieving request-scoped
+// values (request id, user id, user email) in Go's context.Context. This package
+// intentionally uses a different import path than the standard library's context
+// package to avoid naming confusion when both are used together.
 package context
 
 import (

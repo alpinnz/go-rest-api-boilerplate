@@ -2,6 +2,8 @@
 package response
 
 import (
+	"net/http"
+
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/localization"
 	"github.com/gin-gonic/gin"
@@ -105,7 +107,7 @@ func getMessage(c *gin.Context, key string, fallback string) string {
 // Success sends a successful JSON response (200 OK).
 // Automatically uses localization from context if available.
 func Success(c *gin.Context, data interface{}) {
-	c.JSON(200, Response{
+	c.JSON(http.StatusOK, Response{
 		Code:      nil,
 		Message:   getMessage(c, "common.success", "Success"),
 		Data:      data,
@@ -118,7 +120,7 @@ func Success(c *gin.Context, data interface{}) {
 // SuccessWithMeta sends a successful JSON response with metadata (200 OK).
 // Automatically uses localization from context if available.
 func SuccessWithMeta(c *gin.Context, data interface{}, meta *Meta) {
-	c.JSON(200, Response{
+	c.JSON(http.StatusOK, Response{
 		Code:      nil,
 		Message:   getMessage(c, "common.success", "Success"),
 		Data:      data,
@@ -137,7 +139,7 @@ func Created(c *gin.Context, data interface{}, messageKey ...string) {
 		key = messageKey[0]
 	}
 
-	c.JSON(201, Response{
+	c.JSON(http.StatusCreated, Response{
 		Code:      nil,
 		Message:   getMessage(c, key, "Resource created successfully"),
 		Data:      data,
@@ -150,7 +152,7 @@ func Created(c *gin.Context, data interface{}, messageKey ...string) {
 // NoContent sends a no content response (204 No Content).
 // Automatically uses localization from context if available.
 func NoContent(c *gin.Context) {
-	c.JSON(204, Response{
+	c.JSON(http.StatusNoContent, Response{
 		Code:      nil,
 		Message:   getMessage(c, "common.no_content", "No Content"),
 		Data:      nil,
@@ -164,7 +166,7 @@ func NoContent(c *gin.Context) {
 // Automatically uses localization from context if available.
 func Redirect(c *gin.Context, location string) {
 	code := CodeRedirect
-	c.JSON(301, Response{
+	c.JSON(http.StatusMovedPermanently, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.redirect", "Resource moved permanently"),
 		Data:      gin.H{"location": location},
@@ -178,7 +180,7 @@ func Redirect(c *gin.Context, location string) {
 // Automatically uses localization from context if available.
 func TemporaryRedirect(c *gin.Context, location string) {
 	code := CodeRedirect
-	c.JSON(302, Response{
+	c.JSON(http.StatusFound, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.temporary_redirect", "Resource temporarily moved"),
 		Data:      gin.H{"location": location},
@@ -206,7 +208,7 @@ func ValidationError(c *gin.Context, errors interface{}) {
 		errorData = errors
 	}
 
-	c.JSON(400, Response{
+	c.JSON(http.StatusBadRequest, Response{
 		Code:      &code,
 		Message:   msg,
 		Data:      nil,
@@ -225,7 +227,7 @@ func BadRequest(c *gin.Context, args ...interface{}) {
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
 			// Use localized error
-			Error(c, 400, appErr)
+			Error(c, http.StatusBadRequest, appErr)
 			return
 		}
 	}
@@ -256,7 +258,7 @@ func BadRequest(c *gin.Context, args ...interface{}) {
 		message = "Bad request"
 	}
 
-	c.JSON(400, Response{
+	c.JSON(http.StatusBadRequest, Response{
 		Code:      &code,
 		Message:   message,
 		Data:      nil,
@@ -273,7 +275,7 @@ func Unauthorized(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 401, appErr)
+			Error(c, http.StatusUnauthorized, appErr)
 			return
 		}
 	}
@@ -287,7 +289,7 @@ func Unauthorized(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeUnauthorized
-	c.JSON(401, Response{
+	c.JSON(http.StatusUnauthorized, Response{
 		Code:      &code,
 		Message:   getMessage(c, "auth.unauthorized", "Unauthorized"),
 		Data:      nil,
@@ -304,7 +306,7 @@ func Forbidden(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 403, appErr)
+			Error(c, http.StatusForbidden, appErr)
 			return
 		}
 	}
@@ -318,7 +320,7 @@ func Forbidden(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeForbidden
-	c.JSON(403, Response{
+	c.JSON(http.StatusForbidden, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.forbidden", "Access denied"),
 		Data:      nil,
@@ -335,7 +337,7 @@ func NotFound(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 404, appErr)
+			Error(c, http.StatusNotFound, appErr)
 			return
 		}
 	}
@@ -349,7 +351,7 @@ func NotFound(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeNotFound
-	c.JSON(404, Response{
+	c.JSON(http.StatusNotFound, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.not_found", "Resource not found"),
 		Data:      nil,
@@ -366,7 +368,7 @@ func Conflict(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 409, appErr)
+			Error(c, http.StatusConflict, appErr)
 			return
 		}
 	}
@@ -385,7 +387,7 @@ func Conflict(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeConflict
-	c.JSON(409, Response{
+	c.JSON(http.StatusConflict, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.conflict", "Resource conflict"),
 		Data:      nil,
@@ -402,7 +404,7 @@ func InternalServerError(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 500, appErr)
+			Error(c, http.StatusInternalServerError, appErr)
 			return
 		}
 	}
@@ -416,7 +418,7 @@ func InternalServerError(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeInternalServerError
-	c.JSON(500, Response{
+	c.JSON(http.StatusInternalServerError, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.error", "Unexpected error occurred"),
 		Data:      nil,
@@ -456,7 +458,7 @@ func BadGateway(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 502, appErr)
+			Error(c, http.StatusBadGateway, appErr)
 			return
 		}
 	}
@@ -470,7 +472,7 @@ func BadGateway(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeBadGateway
-	c.JSON(502, Response{
+	c.JSON(http.StatusBadGateway, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.bad_gateway", "Bad gateway"),
 		Data:      nil,
@@ -487,7 +489,7 @@ func ServiceUnavailable(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 503, appErr)
+			Error(c, http.StatusServiceUnavailable, appErr)
 			return
 		}
 	}
@@ -501,7 +503,7 @@ func ServiceUnavailable(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeServiceUnavailable
-	c.JSON(503, Response{
+	c.JSON(http.StatusServiceUnavailable, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.service_unavailable", "Service temporarily unavailable"),
 		Data:      nil,
@@ -518,7 +520,7 @@ func GatewayTimeout(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 504, appErr)
+			Error(c, http.StatusGatewayTimeout, appErr)
 			return
 		}
 	}
@@ -532,7 +534,7 @@ func GatewayTimeout(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeGatewayTimeout
-	c.JSON(504, Response{
+	c.JSON(http.StatusGatewayTimeout, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.gateway_timeout", "Gateway timeout"),
 		Data:      nil,
@@ -549,7 +551,7 @@ func TooManyRequests(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 429, appErr)
+			Error(c, http.StatusTooManyRequests, appErr)
 			return
 		}
 	}
@@ -563,7 +565,7 @@ func TooManyRequests(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeTooManyRequests
-	c.JSON(429, Response{
+	c.JSON(http.StatusTooManyRequests, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.too_many_requests", message),
 		Data:      nil,
@@ -580,7 +582,7 @@ func RequestTimeout(c *gin.Context, args ...interface{}) {
 	// Check if first arg is AppError
 	if len(args) == 1 {
 		if appErr, ok := args[0].(domain.AppError); ok {
-			Error(c, 408, appErr)
+			Error(c, http.StatusRequestTimeout, appErr)
 			return
 		}
 	}
@@ -594,7 +596,7 @@ func RequestTimeout(c *gin.Context, args ...interface{}) {
 	}
 
 	code := CodeRequestTimeout
-	c.JSON(408, Response{
+	c.JSON(http.StatusRequestTimeout, Response{
 		Code:      &code,
 		Message:   getMessage(c, "common.request_timeout", message),
 		Data:      nil,

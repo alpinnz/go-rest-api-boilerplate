@@ -4,22 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/alpinnz/go-rest-api-boilerplate/config"
-	"github.com/alpinnz/go-rest-api-boilerplate/internal/delivery/http/handler"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/container"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/delivery/http/router"
-	"github.com/alpinnz/go-rest-api-boilerplate/internal/infrastructure/database"
-	"github.com/alpinnz/go-rest-api-boilerplate/internal/middleware"
-	"github.com/alpinnz/go-rest-api-boilerplate/internal/repository"
-	"github.com/alpinnz/go-rest-api-boilerplate/internal/usecase"
-	"github.com/alpinnz/go-rest-api-boilerplate/internal/websocket"
-	"github.com/alpinnz/go-rest-api-boilerplate/pkg/auth"
 )
 
 // @title Go REST API Boilerplate
@@ -43,75 +35,30 @@ import (
 // @description Bearer token authentication. Format: "Bearer {token}"
 
 func main() {
+	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		fmt.Printf("Failed to load config: %v\n", err)
+		os.Exit(1)
 	}
 
-	auth.SetJWTConfig(
-		cfg.JWT.AccessTokenSecret,
-		cfg.JWT.AccessTokenExpiration,
-		cfg.JWT.RefreshTokenSecret,
-		cfg.JWT.RefreshTokenExpiration,
-	)
-
-	poolConfig := database.PoolConfig{
-		MaxOpenConns:    cfg.Database.MaxOpenConns,
-		MaxIdleConns:    cfg.Database.MaxIdleConns,
-		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
-		ConnMaxIdleTime: cfg.Database.ConnMaxIdleTime,
-	}
-
-	db, err := database.NewPostgresDB(cfg.Database.DSN(), poolConfig)
+	// Initialize dependency injection container
+	c, err := container.New(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		fmt.Printf("Failed to initialize container: %v\n", err)
+		os.Exit(1)
 	}
-	defer db.Close()
+	defer func() {
+		if err := c.Close(); err != nil {
+			fmt.Printf("Error closing resources: %v\n", err)
+		}
+	}()
 
-	redisClient, err := database.NewRedisClient(cfg.Redis.Addr(), cfg.Redis.Password, cfg.Redis.DB)
-	if err != nil {
-		log.Fatalf("Failed to connect to redis: %v", err)
-	}
-	defer redisClient.Close()
-
-	userRepo := repository.NewUserRepository(db)
-	roleRepo := repository.NewRoleRepository(db)
-	sessionRepo := repository.NewSessionRepository(redisClient)
-
-	authUseCase := usecase.NewAuthUseCase(
-		userRepo,
-		sessionRepo,
-		10*time.Second,
-	)
-
-	userUseCase := usecase.NewUserUseCase(
-		userRepo,
-		roleRepo,
-		10*time.Second,
-	)
-
-	roleUseCase := usecase.NewRoleUseCase(
-		roleRepo,
-		10*time.Second,
-	)
-
-	// Initialize WebSocket hub
-	wsHub := websocket.NewHub()
-	go wsHub.Run()
-
-	// WebSocket use case can be used for broadcasting messages
-	_ = usecase.NewWebSocketUseCase(wsHub)
-
-	authHandler := handler.NewAuthHandler(authUseCase)
-	userHandler := handler.NewUserHandler(userUseCase)
-	roleHandler := handler.NewRoleHandler(roleUseCase)
-	healthHandler := handler.NewHealthHandler(db, redisClient)
-	websocketHandler := handler.NewWebSocketHandler(wsHub)
-	authMiddleware := middleware.NewAuthMiddleware(authUseCase)
-
-	r := router.NewRouter(authHandler, userHandler, roleHandler, healthHandler, websocketHandler, authMiddleware)
+	// Initialize router
+	r := router.NewRouter(c)
 	engine := r.Setup()
 
+	// Create HTTP server
 	srv := &http.Server{
 		Addr:         ":" + cfg.App.Port,
 		Handler:      engine,
@@ -119,25 +66,33 @@ func main() {
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}
 
+	// Start server in a goroutine
 	go func() {
-		fmt.Printf("Server starting on port %s\n", cfg.App.Port)
+		c.Logger.Info().
+			Str("app", cfg.App.Name).
+			Str("port", cfg.App.Port).
+			Str("env", cfg.App.Env).
+			Msg("Server starting")
+
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Failed to start server: %v", err)
+			c.Logger.Fatal().Err(err).Msg("Failed to start server")
 		}
 	}()
 
+	// Wait for interrupt signal to gracefully shut down the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	fmt.Println("Shutting down server...")
+	c.Logger.Info().Msg("Shutting down server...")
 
+	// Graceful shutdown with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		c.Logger.Fatal().Err(err).Msg("Server forced to shutdown")
 	}
 
-	fmt.Println("Server exited")
+	c.Logger.Info().Msg("Server exited gracefully")
 }

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,6 +16,9 @@ func setupTest() {
 		"test-refresh-secret-key-min-32char",
 		7*24*time.Hour,
 	)
+
+	// Ensure tests are isolated even if a previous test changed timeNow.
+	timeNow = time.Now
 }
 
 func TestGenerateAccessToken(t *testing.T) {
@@ -73,9 +77,26 @@ func TestValidateToken_InvalidToken(t *testing.T) {
 func TestValidateToken_ExpiredToken(t *testing.T) {
 	setupTest()
 
-	// This would require mocking time, skipped for simplicity
-	// In real tests, you'd use a library like github.com/benbjohnson/clock
-	t.Skip("Requires time mocking")
+	base := time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC)
+	userID := uuid.New()
+
+	// 1) Generate token at "base" with a short expiration
+	SetJWTConfig(
+		"test-access-secret-key-min-32chars",
+		1*time.Minute,
+		"test-refresh-secret-key-min-32char",
+		7*24*time.Hour,
+	)
+
+	timeNow = func() time.Time { return base }
+	token, err := GenerateAccessToken(userID)
+	assert.NoError(t, err)
+
+	// 2) Validate after expiration
+	timeNow = func() time.Time { return base.Add(2 * time.Minute) }
+	_, err = ValidateToken(token)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, jwt.ErrTokenExpired)
 }
 
 func TestHashPassword(t *testing.T) {

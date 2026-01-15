@@ -1,48 +1,46 @@
 # Package (pkg)
 
-Reusable packages that can be used across the application or in other projects.
+Reusable packages that are safe to import from anywhere (including from other projects).
+
+Guiding rule:
+- `pkg/*` must not import `internal/*`.
+- Keep these packages small, focused, and easy to test.
 
 ## Structure
 
 ```
 pkg/
-├── auth/             # Authentication utilities (JWT, password hashing)
-├── context/          # Context helpers for request tracing
-├── database/         # Database transaction helpers
-├── errors/           # Structured error handling
-├── logger/           # Structured logging with Zerolog
-├── pagination/       # Pagination utilities
-├── response/         # HTTP response formatting
-└── validator/        # Input validation utilities
+├── auth/             # JWT + password hashing helpers
+├── context/          # Request-scoped context helpers (request_id, user_id)
+├── database/         # Transaction helpers
+├── errors/           # Typed/structured error helpers
+├── logger/           # Structured logging (Zerolog)
+├── migration/        # DB migration runner
+├── pagination/       # Pagination helpers
+├── response/         # HTTP response helpers (usable by delivery layer)
+└── validator/        # Request validation utilities
 ```
 
 ## Packages
 
 ### auth
 
-JWT token management and password hashing with separate access and refresh token support.
+JWT token management and password hashing with separate access/refresh support.
 
 Usage:
-```go
+```text
 // Configure JWT settings (at app initialization)
 auth.SetJWTConfig(
     accessSecret, accessExpiration,
     refreshSecret, refreshExpiration,
 )
 
-// Generate access token (short-lived)
 accessToken, err := auth.GenerateAccessToken(userID)
-
-// Generate refresh token (long-lived)
 refreshToken, err := auth.GenerateRefreshToken(userID)
 
-// Validate token (automatically uses correct secret based on token type)
 claims, err := auth.ValidateToken(token)
 
-// Hash password
 hashedPassword, err := auth.HashPassword(password)
-
-// Verify password
 match := auth.CheckPasswordHash(password, hashedPassword)
 ```
 
@@ -51,148 +49,74 @@ match := auth.CheckPasswordHash(password, hashedPassword)
 Context helpers for request tracing across layers.
 
 Usage:
-```go
-// Set request ID
+```text
 ctx := context.WithRequestID(ctx, requestID)
-
-// Get request ID
 requestID := context.GetRequestID(ctx)
 
-// Set user ID
 ctx = context.WithUserID(ctx, userID)
 ```
 
 ### database
 
-Transaction management helpers.
+Transaction helpers.
 
 Usage:
-```go
-// Execute operations in transaction
+```text
 err := database.WithTransaction(ctx, db, func(ctx context.Context, tx *sql.Tx) error {
-    // Operations here
+    // ...
     return nil
 })
 ```
 
-Features:
-- Automatic rollback on error
-- Panic recovery with rollback
-
 ### errors
 
-Structured error handling with context.
+Structured error helpers with optional context.
 
 Usage:
-```go
-// Create specific errors
-err := errors.NotFound("User not found")
-err := errors.BadRequest("Invalid email")
-err := errors.Unauthorized("Token expired")
-
-// Add context
-err := errors.NotFound("User not found").
-    WithContext("user_id", userID)
-```
-- `BadRequest()` - 400 errors
-- `Unauthorized()` - 401 errors
-- `Forbidden()` - 403 errors
-- `Conflict()` - 409 errors
-- `InternalServer()` - 500 errors
-- `ValidationFailed()` - Validation errors
-- `Timeout()` - 408 timeout errors
-
-**Usage:**
-```go
-// Create error
-err := errors.NotFound("User not found")
-
-// Add context
-err = errors.NotFound("User not found").WithContext("user_id", userID)
-
-// Wrap existing error
+```text
+err := errors.NotFound("User not found").WithContext("user_id", userID)
 err = errors.Wrap(dbErr, "DB_ERROR", "Database query failed")
 ```
 
 ### logger
 
-Structured logging with Zerolog.
+Structured logging with zerolog.
 
 Usage:
-```go
-// Create logger
-log := logger.Development()  // Pretty console output
-log := logger.Production()   // JSON structured logs
+```text
+log := logger.New(logger.Config{Level: "info", Pretty: false})
+log.Info().Str("user_id", userID).Msg("created")
+```
 
-// With fields
-log.WithFields(map[string]interface{}{
-    "user_id": userID,
-}).Info("User logged in")
+### migration
+
+Database migration runner.
+
+Typical usage:
+- CLI/Makefile runs migrations (recommended)
+- Application boot can also run migrations depending on your deployment strategy
+
+Usage:
+```text
+runner := migration.NewRunner(db, "migrations")
+_ = runner.Initialize()
+_ = runner.Up()
 ```
 
 ### pagination
 
-Pagination utilities for list endpoints.
-
-Usage:
-```go
-// Extract from query params
-params := pagination.FromContext(c)
-
-// Query with pagination
-users, total, err := repo.FindAll(ctx, params.Offset, params.PerPage)
-
-// Create metadata
-meta := pagination.NewMeta(params.Page, params.PerPage, total)
-
-// Return with metadata
-response.SuccessWithMeta(c, users, &meta)
-```
-
-Query Parameters: `?page=2&per_page=20`
+Pagination helpers for list endpoints.
 
 ### response
 
-HTTP response formatting with localization support.
-
-Response Structure:
-```json
-{
-  "code": "SUCCESS",
-  "message": "Request successful",
-  "data": {},
-  "meta": {}
-}
-```
-
-Usage:
-```go
-// Success responses
-response.Success(c, data)
-response.Created(c, newUser)
-response.SuccessWithMeta(c, users, &meta)
-
-// Error responses
-response.NotFound(c, "User not found")
-response.BadRequest(c, "INVALID_EMAIL", "Invalid email", errors)
-response.Unauthorized(c, "Token expired")
-response.ValidationError(c, validationErrors)
-```
+HTTP response helpers (commonly used by `internal/delivery/http/*`).
 
 ### validator
 
 Input validation using go-playground/validator.
 
 Usage:
-```go
-// Define validation in struct
-type CreateUserRequest struct {
-    Email    string `json:"email" validate:"required,email"`
-    Username string `json:"username" validate:"required,min=3,max=50"`
-    Password string `json:"password" validate:"required,min=8"`
-}
-
-// Validate
+```text
 validationErrors := validator.Validate(req)
 if len(validationErrors) > 0 {
     response.ValidationError(c, validationErrors)
@@ -200,38 +124,14 @@ if len(validationErrors) > 0 {
 }
 ```
 
-Built-in Validations: required, email, min, max, len, uuid, oneof
+Built-in validations depend on `go-playground/validator` tags (e.g. `required`, `email`, `min`, `max`, `uuid`, `oneof`).
 
 ## Testing
 
-Run package tests:
-```bash
-make test                      # All tests including packages
-go test ./pkg/...              # Package tests only
-go test -v ./pkg/pagination/   # Specific package with verbose output
-go test -cover ./pkg/...       # With coverage report
-```
-
-**Test files:**
+These packages have unit tests under `pkg/*`:
 - `pkg/auth/auth_test.go`
 - `pkg/errors/errors_test.go`
 - `pkg/pagination/pagination_test.go`
 - `pkg/validator/validator_test.go`
 
-## Design Principles
-
-**Independence:**
-- No dependencies on internal packages
-- Can be used in other projects
-- Clear, simple interfaces
-
-**Single Responsibility:**
-- Each package has one well-defined purpose
-- Focused functionality
-
-**No Side Effects:**
-- Predictable behavior
-- Easy to test
-- No global state
-- Pure functions where possible
-
+Run tests using the root Makefile (`make test`) to keep a consistent workflow.

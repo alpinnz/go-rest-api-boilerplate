@@ -11,17 +11,17 @@ Migrations are organized in pairs:
 ## Current Migrations
 
 ```
-20260102053510_create_tabel_users.up.sql        # Create users table
-20260102053510_create_tabel_users.down.sql      # Drop users table
+20260102053510_create_table_users.up.sql        # Create users table
+20260102053510_create_table_users.down.sql      # Drop users table
 
-20260102053516_create_tabel_roles.up.sql        # Create roles table
-20260102053516_create_tabel_roles.down.sql      # Drop roles table
+20260102053516_create_table_roles.up.sql        # Create roles table
+20260102053516_create_table_roles.down.sql      # Drop roles table
 
-20260102053628_create_tabel_user_roles.up.sql   # Create user_roles junction table
-20260102053628_create_tabel_user_roles.down.sql # Drop user_roles table
+20260102053628_create_table_user_roles.up.sql   # Create user_roles junction table
+20260102053628_create_table_user_roles.down.sql # Drop user_roles table
 ```
 
-Note: Migration file names use "tabel" (as originally created). Future migrations should use "table" for consistency.
+Note: Migration file names in the repository originally included `tabel` in some filenames; prefer `table` in future migration names for consistency (do not rename historical files).
 
 ## Schema Overview
 
@@ -79,28 +79,28 @@ Junction table for many-to-many relationship between users and roles.
 
 ### Prerequisites
 
-Install development tools using CLI:
+Install development tools and use Makefile targets (preferred):
 ```bash
-# Build CLI tool first
-go build -o app cmd/cli/main.go
-
-# Install tools (includes golang-migrate)
-make install tools
+# Install development tools (includes migration tooling)
+make install
 ```
 
 ### Apply Migrations
 
 Run all pending migrations:
 ```bash
-make migrate up
+make migrate-up
 ```
 
 This connects to database using configuration from `.env` file.
 
 ### Rollback Migrations
 
-Rollback all migrations:
+Rollback last migration:
+```bash
+make migrate-down
 ```
+
 
 ## Migration Guidelines
 - Always create both up and down migrations

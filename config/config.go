@@ -4,17 +4,21 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	App      AppConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	Server   ServerConfig
+	App         AppConfig
+	Database    DatabaseConfig
+	Redis       RedisConfig
+	JWT         JWTConfig
+	Server      ServerConfig
+	CORS        CORSConfig
+	RateLimiter RateLimiterConfig
+	Logger      LoggerConfig
 }
 
 type AppConfig struct {
@@ -56,8 +60,28 @@ type ServerConfig struct {
 	ShutdownTimeout time.Duration
 }
 
+type CORSConfig struct {
+	AllowedOrigins   []string
+	AllowedMethods   []string
+	AllowedHeaders   []string
+	AllowCredentials bool
+	MaxAge           int
+}
+
+type RateLimiterConfig struct {
+	Enabled       bool
+	RequestsLimit int
+	WindowMinutes int
+}
+
+type LoggerConfig struct {
+	Level  string
+	Pretty bool
+}
+
 func Load() (*Config, error) {
-	godotenv.Load()
+	// Load .env file if exists (ignore error if not found)
+	_ = godotenv.Load()
 
 	cfg := &Config{
 		App: AppConfig{
@@ -93,6 +117,22 @@ func Load() (*Config, error) {
 			ReadTimeout:     parseDuration(getEnv("READ_TIMEOUT", "10s")),
 			WriteTimeout:    parseDuration(getEnv("WRITE_TIMEOUT", "10s")),
 			ShutdownTimeout: parseDuration(getEnv("SHUTDOWN_TIMEOUT", "5s")),
+		},
+		CORS: CORSConfig{
+			AllowedOrigins:   parseStringSlice(getEnv("CORS_ALLOWED_ORIGINS", "*")),
+			AllowedMethods:   parseStringSlice(getEnv("CORS_ALLOWED_METHODS", "GET,POST,PUT,DELETE,PATCH,OPTIONS")),
+			AllowedHeaders:   parseStringSlice(getEnv("CORS_ALLOWED_HEADERS", "Content-Type,Authorization,Accept,Origin,X-Requested-With")),
+			AllowCredentials: getEnvAsBool("CORS_ALLOW_CREDENTIALS", true),
+			MaxAge:           getEnvAsInt("CORS_MAX_AGE", 3600),
+		},
+		RateLimiter: RateLimiterConfig{
+			Enabled:       getEnvAsBool("RATE_LIMITER_ENABLED", true),
+			RequestsLimit: getEnvAsInt("RATE_LIMITER_REQUESTS", 100),
+			WindowMinutes: getEnvAsInt("RATE_LIMITER_WINDOW_MINUTES", 1),
+		},
+		Logger: LoggerConfig{
+			Level:  getEnv("LOG_LEVEL", "info"),
+			Pretty: getEnvAsBool("LOG_PRETTY", false),
 		},
 	}
 
@@ -208,4 +248,31 @@ func parseDuration(s string) time.Duration {
 		return 0
 	}
 	return d
+}
+
+func getEnvAsBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if value == "true" || value == "1" {
+			return true
+		}
+		if value == "false" || value == "0" {
+			return false
+		}
+	}
+	return defaultValue
+}
+
+func parseStringSlice(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }

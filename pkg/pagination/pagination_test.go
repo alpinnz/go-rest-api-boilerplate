@@ -1,6 +1,8 @@
 package pagination
 
 import (
+	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -63,7 +65,10 @@ func TestFromContext(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c, _ := gin.CreateTestContext(nil)
-			c.Request = &gin.Request{URL: &gin.URL{}}
+			// create an http.Request manually
+			reqURL := &url.URL{}
+			req := &http.Request{URL: reqURL}
+			c.Request = req
 
 			query := c.Request.URL.Query()
 			if tt.page != "" {

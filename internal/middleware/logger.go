@@ -1,26 +1,24 @@
 package middleware
 
 import (
-	"log"
 	"time"
 
+	"github.com/alpinnz/go-rest-api-boilerplate/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 const RequestIDKey = "request_id"
 
-func Logger() gin.HandlerFunc {
+func Logger(l *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Generate request ID if not exists
-		if _, exists := c.Get(RequestIDKey); !exists {
-			c.Set(RequestIDKey, uuid.New().String())
-		}
+		requestID := uuid.New().String()
+		c.Set(RequestIDKey, requestID)
 
 		start := time.Now()
 		path := c.Request.URL.Path
 		method := c.Request.Method
-		requestID := GetRequestID(c)
 		clientIP := c.ClientIP()
 		userAgent := c.Request.UserAgent()
 
@@ -29,13 +27,25 @@ func Logger() gin.HandlerFunc {
 		latency := time.Since(start)
 		statusCode := c.Writer.Status()
 
-		// Structured log format with request_id, client IP, and user agent
-		log.Printf("[request_id=%s] [ip=%s] [method=%s] [path=%s] [status=%d] [latency=%v] [user_agent=%s]",
-			requestID, clientIP, method, path, statusCode, latency, userAgent)
+		// Structured logging
+		l.Info().
+			Str("request_id", requestID).
+			Str("client_ip", clientIP).
+			Str("method", method).
+			Str("path", path).
+			Int("status", statusCode).
+			Dur("latency", latency).
+			Str("user_agent", userAgent).
+			Msg("HTTP Request")
 
-		// Log errors separately for better visibility
+		// Log errors separately
 		if len(c.Errors) > 0 {
-			log.Printf("[request_id=%s] [errors] %v", requestID, c.Errors.String())
+			for _, err := range c.Errors {
+				l.Error().
+					Str("request_id", requestID).
+					Err(err).
+					Msg("Request Error")
+			}
 		}
 	}
 }

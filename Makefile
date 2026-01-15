@@ -104,20 +104,21 @@ check: fmt vet lint test ## Run all code quality checks
 # Database
 # ============================================================================
 
-migrate-up: ## Run all migrations
+migrate-up: ## Run all migrations using built-in runner
 	@echo "$(BLUE)Running migrations...$(NC)"
-	@if [ -z "$${DB_HOST}" ]; then echo "$(RED)Error: DB_HOST not set in .env$(NC)" && exit 1; fi
-	@migrate -path migrations -database "postgres://$${DB_USER}:$${DB_PASS}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME}?sslmode=$${DB_SSLMODE}" up || (echo "$(RED)migrate not installed. Run: make install$(NC)" && exit 1)
+	@go run cmd/cli/main.go db migrate-up
 	@echo "$(GREEN)✓ Migrations completed$(NC)"
 
-migrate-down: ## Rollback last migration
+migrate-down: ## Rollback last migration using built-in runner
 	@echo "$(BLUE)Rolling back migration...$(NC)"
-	@migrate -path migrations -database "postgres://$${DB_USER}:$${DB_PASS}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME}?sslmode=$${DB_SSLMODE}" down 1
+	@go run cmd/cli/main.go db migrate-down
 	@echo "$(GREEN)✓ Migration rolled back$(NC)"
 
-migrate-status: ## Show migration status
+migrate-status: ## Show migration status using built-in runner
 	@echo "$(BLUE)Migration status:$(NC)"
-	@migrate -path migrations -database "postgres://$${DB_USER}:$${DB_PASS}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME}?sslmode=$${DB_SSLMODE}" version
+	@go run cmd/cli/main.go db migrate-status
+
+migrate: migrate-up ## Alias for migrate-up
 
 seed: ## Seed database with initial data
 	@echo "$(BLUE)Seeding database...$(NC)"

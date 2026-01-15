@@ -87,14 +87,20 @@ func GenerateRefreshToken(userID uuid.UUID) (string, error) {
 	return generateTokenWithType(userID, TokenTypeRefresh, refreshTokenExpiration, refreshTokenSecret)
 }
 
+// timeNow is a seam for tests to control time-dependent token behavior.
+// Production code should rely on the default implementation (time.Now).
+var timeNow = time.Now
+
 // generateTokenWithType creates a JWT token with specified type, expiration, and secret.
 func generateTokenWithType(userID uuid.UUID, tokenType string, expiration time.Duration, secret []byte) (string, error) {
+	now := timeNow()
+
 	claims := Claims{
 		UserID:    userID.String(),
 		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiration)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(expiration)),
+			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
 

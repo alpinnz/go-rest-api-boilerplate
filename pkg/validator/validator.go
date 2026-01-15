@@ -73,11 +73,10 @@ func toSnakeLower(in string) string {
 
 // Validate is kept for backward compatibility.
 // Use ValidateStruct for new code with localization support.
-func Validate(s interface{}) error {
-	errs := ValidateStruct(s)
-	if len(errs) == 0 {
-		return nil
+func Validate(s interface{}) []domain.AppError {
+	errList := ValidateStruct(s)
+	if errList == nil {
+		return []domain.AppError{}
 	}
-	// Return first error for backward compatibility
-	return errs[0]
+	return errList
 }

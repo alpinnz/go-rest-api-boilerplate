@@ -3,7 +3,9 @@ package handler
 import (
 	"net/http"
 	"sort"
+	"strings"
 
+	"github.com/alpinnz/go-rest-api-boilerplate/config"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/delivery/http/dto"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/domain"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/websocket"
@@ -13,24 +15,47 @@ import (
 	gorilla "github.com/gorilla/websocket"
 )
 
-var upgrader = gorilla.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		// TODO: Configure this based on your CORS policy
-		return true
-	},
-}
-
 // WebSocketHandler handles WebSocket connections
 type WebSocketHandler struct {
-	hub *websocket.Hub
+	hub      *websocket.Hub
+	upgrader gorilla.Upgrader
 }
 
 // NewWebSocketHandler creates a new WebSocketHandler instance
-func NewWebSocketHandler(hub *websocket.Hub) *WebSocketHandler {
+func NewWebSocketHandler(hub *websocket.Hub, corsCfg config.CORSConfig) *WebSocketHandler {
+	allowedOrigins := corsCfg.AllowedOrigins
+
+	upgrader := gorilla.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+
+			// If allowed origins contain wildcard, allow all
+			for _, ao := range allowedOrigins {
+				if strings.TrimSpace(ao) == "*" {
+					return true
+				}
+			}
+
+			// If origin header is missing and we don't allow '*', deny by default
+			if origin == "" {
+				return false
+			}
+
+			// Exact match (case-insensitive)
+			for _, ao := range allowedOrigins {
+				if strings.EqualFold(strings.TrimSpace(ao), origin) {
+					return true
+				}
+			}
+			return false
+		},
+	}
+
 	return &WebSocketHandler{
-		hub: hub,
+		hub:      hub,
+		upgrader: upgrader,
 	}
 }
 
@@ -52,7 +77,7 @@ func (h *WebSocketHandler) Connect(c *gin.Context) {
 	}
 
 	// Upgrade HTTP connection to WebSocket
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, domain.NewAppError("websocket.upgrade_failed"))
 		return

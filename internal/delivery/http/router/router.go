@@ -4,38 +4,21 @@ import (
 	"log"
 	"time"
 
-	"github.com/alpinnz/go-rest-api-boilerplate/internal/delivery/http/handler"
+	"github.com/alpinnz/go-rest-api-boilerplate/internal/container"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/localization"
 	"github.com/alpinnz/go-rest-api-boilerplate/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 type Router struct {
-	engine           *gin.Engine
-	authHandler      *handler.AuthHandler
-	userHandler      *handler.UserHandler
-	roleHandler      *handler.RoleHandler
-	healthHandler    *handler.HealthHandler
-	websocketHandler *handler.WebSocketHandler
-	authMiddleware   *middleware.AuthMiddleware
+	engine    *gin.Engine
+	container *container.Container
 }
 
-func NewRouter(
-	authHandler *handler.AuthHandler,
-	userHandler *handler.UserHandler,
-	roleHandler *handler.RoleHandler,
-	healthHandler *handler.HealthHandler,
-	websocketHandler *handler.WebSocketHandler,
-	authMiddleware *middleware.AuthMiddleware,
-) *Router {
+func NewRouter(c *container.Container) *Router {
 	return &Router{
-		engine:           gin.Default(),
-		authHandler:      authHandler,
-		userHandler:      userHandler,
-		roleHandler:      roleHandler,
-		healthHandler:    healthHandler,
-		websocketHandler: websocketHandler,
-		authMiddleware:   authMiddleware,
+		engine:    gin.Default(),
+		container: c,
 	}
 }
 
@@ -50,12 +33,12 @@ func (r *Router) Setup() *gin.Engine {
 	}
 
 	// Global middlewares
-	r.engine.Use(middleware.Logger())
+	r.engine.Use(middleware.Logger(r.container.Logger))
 	r.engine.Use(middleware.Language(bundle))
-	r.engine.Use(middleware.CORS())
-	r.engine.Use(middleware.Recovery())
-	r.engine.Use(middleware.Sanitize())                // XSS protection
-	r.engine.Use(middleware.Timeout(30 * time.Second)) // 30 second timeout
+	r.engine.Use(middleware.CORS(r.container.Config.CORS))
+	r.engine.Use(middleware.Recovery(r.container.Logger))
+	r.engine.Use(middleware.Sanitize())
+	r.engine.Use(middleware.Timeout(30 * time.Second))
 
 	// Serve OpenAPI specification
 	r.engine.StaticFile("/docs/swagger.json", "./internal/delivery/http/docs/swagger.json")
@@ -68,53 +51,61 @@ func (r *Router) Setup() *gin.Engine {
 		// Health check endpoint (no rate limit)
 		health := v1.Group("/health")
 		{
-			health.GET("", r.healthHandler.Check)
-			health.GET("/live", r.healthHandler.Liveness)
-			health.GET("/ready", r.healthHandler.Readiness)
+			health.GET("", r.container.HealthHandler.Check)
+			health.GET("/live", r.container.HealthHandler.Liveness)
+			health.GET("/ready", r.container.HealthHandler.Readiness)
 		}
 
 		// Rate limiter for authentication endpoints (prevent brute force)
-		authLimiter := middleware.NewRateLimiter(10, 1*time.Minute) // 10 requests per minute
+		var authLimiter *middleware.RateLimiter
+		if r.container.Config.RateLimiter.Enabled {
+			authLimiter = middleware.NewRateLimiter(
+				r.container.Config.RateLimiter.RequestsLimit,
+				time.Duration(r.container.Config.RateLimiter.WindowMinutes)*time.Minute,
+			)
+		}
 
 		// Authentication endpoints
 		auth := v1.Group("/auth")
-		auth.Use(authLimiter.Limit()) // Apply rate limiting
+		if authLimiter != nil {
+			auth.Use(authLimiter.Limit())
+		}
 		{
-			auth.POST("/register", r.authHandler.Register)
-			auth.POST("/login", r.authHandler.Login)
-			auth.POST("/refresh-token", r.authHandler.RefreshToken)
-			auth.POST("/logout", r.authMiddleware.Authenticate(), r.authHandler.Logout)
+			auth.POST("/register", r.container.AuthHandler.Register)
+			auth.POST("/login", r.container.AuthHandler.Login)
+			auth.POST("/refresh-token", r.container.AuthHandler.RefreshToken)
+			auth.POST("/logout", r.container.AuthMiddleware.Authenticate(), r.container.AuthHandler.Logout)
 		}
 
 		// User management endpoints
 		users := v1.Group("/users")
-		users.Use(r.authMiddleware.Authenticate())
+		users.Use(r.container.AuthMiddleware.Authenticate())
 		{
-			users.GET("/me", r.userHandler.GetProfile)
-			users.GET("", r.userHandler.List)
-			users.GET("/:id", r.userHandler.GetByID)
-			users.PUT("/:id", r.userHandler.Update)
-			users.DELETE("/:id", r.userHandler.Delete)
-			users.POST("/:id/roles", r.userHandler.AssignRole)
-			users.DELETE("/:id/roles/:roleId", r.userHandler.RemoveRole)
+			users.GET("/me", r.container.UserHandler.GetProfile)
+			users.GET("", r.container.UserHandler.List)
+			users.GET("/:id", r.container.UserHandler.GetByID)
+			users.PUT("/:id", r.container.UserHandler.Update)
+			users.DELETE("/:id", r.container.UserHandler.Delete)
+			users.POST("/:id/roles", r.container.UserHandler.AssignRole)
+			users.DELETE("/:id/roles/:roleId", r.container.UserHandler.RemoveRole)
 		}
 
 		// Role management endpoints
 		roles := v1.Group("/roles")
-		roles.Use(r.authMiddleware.Authenticate())
+		roles.Use(r.container.AuthMiddleware.Authenticate())
 		{
-			roles.GET("", r.roleHandler.List)
-			roles.POST("", r.roleHandler.Create)
-			roles.GET("/:id", r.roleHandler.GetByID)
-			roles.PUT("/:id", r.roleHandler.Update)
-			roles.DELETE("/:id", r.roleHandler.Delete)
+			roles.GET("", r.container.RoleHandler.List)
+			roles.POST("", r.container.RoleHandler.Create)
+			roles.GET("/:id", r.container.RoleHandler.GetByID)
+			roles.PUT("/:id", r.container.RoleHandler.Update)
+			roles.DELETE("/:id", r.container.RoleHandler.Delete)
 		}
 
 		// WebSocket endpoints
 		ws := v1.Group("/ws")
 		{
-			ws.GET("", r.authMiddleware.Authenticate(), r.websocketHandler.Connect)
-			ws.GET("/stats", r.authMiddleware.Authenticate(), r.websocketHandler.GetStats)
+			ws.GET("", r.container.AuthMiddleware.Authenticate(), r.container.WebSocketHandler.Connect)
+			ws.GET("/stats", r.container.AuthMiddleware.Authenticate(), r.container.WebSocketHandler.GetStats)
 		}
 	}
 
